@@ -1,0 +1,98 @@
+@using Gulp.Shared.DTOs
+@inject IApiClient ApiClient
+@inject IAuthStateService AuthStateService
+@inject NavigationManager Navigation
+
+<div class="max-w-md mx-auto p-8">
+    <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">Sign In</h3>
+
+    <EditForm Model="@loginModel" OnValidSubmit="@HandleLogin" FormName="LoginForm">
+        <DataAnnotationsValidator />
+
+        <Input @bind-Value="loginModel.Email"
+               Label="Email"
+               Type="email"
+               Placeholder="Enter your email"
+               LeftIcon="fas fa-envelope"
+               IsRequired="true"
+               ErrorMessage="@GetFieldError(nameof(loginModel.Email))" />
+
+        <Input @bind-Value="loginModel.Password"
+               Label="Password"
+               Type="password"
+               Placeholder="Enter your password"
+               LeftIcon="fas fa-lock"
+               IsRequired="true"
+               ErrorMessage="@GetFieldError(nameof(loginModel.Password))" />
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4">
+                @errorMessage
+            </div>
+        }
+
+        <Button Type="submit"
+                Variant="ButtonVariant.Primary"
+                FullWidth="true"
+                IsLoading="@isLoading"
+                IsDisabled="@isLoading">
+            Sign In
+        </Button>
+    </EditForm>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnLoginSuccess { get; set; }
+
+    private LoginDto loginModel = new();
+    private string errorMessage = string.Empty;
+    private bool isLoading = false;
+    private EditContext? editContext;
+
+    private async Task HandleLogin()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+            StateHasChanged();
+
+            var success = await AuthStateService.LoginAsync(loginModel);
+
+            if (success)
+            {
+                await OnLoginSuccess.InvokeAsync();
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                errorMessage = AuthStateService.LastErrorMessage ?? "Login failed. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "An error occurred during login. Please try again.";
+            Console.WriteLine($"Login error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        editContext = new EditContext(loginModel);
+    }
+
+    private string? GetFieldError(string fieldName)
+    {
+        if (editContext?.GetValidationMessages(new FieldIdentifier(loginModel, fieldName)).Any() == true)
+        {
+            return editContext.GetValidationMessages(new FieldIdentifier(loginModel, fieldName)).First();
+        }
+        return null;
+    }
+}

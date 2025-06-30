@@ -1,0 +1,277 @@
+@using System.Security.Claims
+@using Gulp.Client.Services
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject HttpClient Http
+@implements IDisposable
+
+<!-- Enhanced Modern App Header with Integrated Navigation -->
+<div class="bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 text-white shadow-2xl relative overflow-hidden">
+    <!-- Consistent Background Pattern -->
+    <div class="absolute inset-0 opacity-10">
+        <svg class="w-full h-full" viewBox="0 0 100 100" fill="none">
+            <defs>
+                <pattern id="header-grid" width="15" height="15" patternUnits="userSpaceOnUse">
+                    <circle cx="7.5" cy="7.5" r="1" fill="currentColor"/>
+                </pattern>
+            </defs>
+            <rect width="100" height="100" fill="url(#header-grid)" />
+        </svg>
+    </div>
+
+    <!-- Desktop Navigation Tabs (integrated) -->
+    <div class="hidden md:block relative">
+        <div class="max-w-4xl mx-auto px-8 pt-6">
+        <div class="flex items-center space-x-2">
+            <button @onclick='() => NavigateToTab("/")'
+                    class="px-6 py-3 rounded-2xl font-semibold transition-all duration-300 @GetTabClass("/")">
+                <div class="flex items-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    <span>Today</span>
+                </div>
+            </button>
+
+            <button @onclick='() => NavigateToTab("/history")'
+                    class="px-6 py-3 rounded-2xl font-semibold transition-all duration-300 @GetTabClass("/history")">
+                <div class="flex items-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    <span>History</span>
+                </div>
+            </button>
+        </div>
+        </div>
+    </div>
+
+    <div class="relative">
+        <div class="max-w-4xl mx-auto p-4 md:p-6">
+        <!-- Header Top Row -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <div class="flex items-center space-x-4">
+                <!-- App Icon -->
+                <div class="w-16 h-16 bg-white/20 rounded-3xl flex items-center justify-center backdrop-blur-sm shadow-lg">
+                    <span class="text-3xl">💧</span>
+                </div>
+
+                <!-- Greeting -->
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold mb-1">@GetGreeting()</h1>
+                    <p class="text-blue-100 text-lg">@GetUserName()</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <!-- Date/Time Info -->
+                <div class="text-right">
+                    <div class="text-blue-100 text-sm font-medium">@DateTime.Now.ToString("dddd")</div>
+                    <div class="text-white font-bold text-lg">@DateTime.Now.ToString("MMM dd")</div>
+                    <div class="text-blue-200 text-xs">@DateTime.Now.ToString("yyyy")</div>
+                </div>
+
+                <!-- Logout Button -->
+                <button @onclick="HandleLogout"
+                        class="bg-white/20 hover:bg-white/30 border border-white/30 rounded-xl p-2 transition-all duration-300 hover:scale-105 backdrop-blur-sm group">
+                    <svg class="w-5 h-5 text-white group-hover:text-red-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Enhanced Stats Row -->
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <!-- Today's Goal -->
+            <div class="bg-white/20 rounded-2xl p-4 backdrop-blur-sm border border-white/30">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-green-500 rounded-2xl flex items-center justify-center shadow-lg">
+                        <span class="text-2xl">🎯</span>
+                    </div>
+                    <div>
+                        <div class="text-xs text-blue-100 font-medium uppercase tracking-wide">Goal</div>
+                        <div class="text-lg font-bold">@TodaysGoal ml</div>
+                        <div class="text-xs text-blue-200">@((TodaysGoal / 1000.0).ToString("F1"))L target</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress -->
+            <div class="bg-white/20 rounded-2xl p-4 backdrop-blur-sm border border-white/30">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg">
+                        <span class="text-2xl">📊</span>
+                    </div>
+                    <div>
+                        <div class="text-xs text-blue-100 font-medium uppercase tracking-wide">Progress</div>
+                        <div class="text-lg font-bold">@GetProgressPercentage()%</div>
+                        <div class="text-xs text-blue-200">@TodaysIntake ml consumed</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Water Button (Desktop) or Achievement (Mobile) -->
+            @if (ShowAddButton)
+            {
+                <div class="hidden md:block">
+                    <button @onclick="OnAddWaterClick"
+                            class="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white rounded-2xl p-4 transition-all duration-300 hover:scale-105 shadow-xl group border-2 border-cyan-400/50 hover:border-cyan-300">
+                        <div class="flex items-center justify-center space-x-3">
+                            <div class="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300 group-hover:bg-white/30">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                            </div>
+                            <div class="text-left">
+                                <div class="text-lg font-bold">Add Water</div>
+                                <div class="text-sm text-cyan-100">Track your intake</div>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Achievement Badge (Mobile) -->
+                <div class="md:hidden">
+                    <div class="bg-white/20 rounded-2xl p-4 backdrop-blur-sm border border-white/30">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-2xl flex items-center justify-center shadow-lg">
+                                @if (GetProgressPercentage() >= 100)
+                                {
+                                    <span class="text-2xl">🏆</span>
+                                }
+                                else if (GetProgressPercentage() >= 75)
+                                {
+                                    <span class="text-2xl">🌟</span>
+                                }
+                                else if (GetProgressPercentage() >= 50)
+                                {
+                                    <span class="text-2xl">💪</span>
+                                }
+                                else
+                                {
+                                    <span class="text-2xl">🚀</span>
+                                }
+                            </div>
+                            <div>
+                                <div class="text-xs text-blue-100 font-medium uppercase tracking-wide">Status</div>
+                                <div class="text-sm font-bold">@GetStatusMessage()</div>
+                                <div class="text-xs text-blue-200">Keep going!</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int TodaysGoal { get; set; } = 2000;
+    [Parameter] public int TodaysIntake { get; set; } = 0;
+    [Parameter] public bool ShowAddButton { get; set; } = false;
+    [Parameter] public EventCallback OnAddWater { get; set; }
+
+    private string userName = "";
+    private string currentPath = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            userName = authState.User.FindFirst(ClaimTypes.Name)?.Value ??
+                      authState.User.FindFirst("name")?.Value ??
+                      authState.User.Identity.Name ??
+                      "Friend";
+        }
+
+        currentPath = Navigation.ToBaseRelativePath(Navigation.Uri);
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        currentPath = Navigation.ToBaseRelativePath(e.Location);
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+
+    private string GetGreeting()
+    {
+        var hour = DateTime.Now.Hour;
+        return hour switch
+        {
+            >= 5 and < 12 => "Good Morning",
+            >= 12 and < 17 => "Good Afternoon",
+            >= 17 and < 22 => "Good Evening",
+            _ => "Good Night"
+        };
+    }
+
+    private string GetUserName()
+    {
+        return string.IsNullOrEmpty(userName) ? "Friend" : userName;
+    }
+
+    private int GetProgressPercentage()
+    {
+        if (TodaysGoal <= 0) return 0;
+        return Math.Min(100, (int)Math.Round((double)TodaysIntake / TodaysGoal * 100));
+    }
+
+    private async Task OnAddWaterClick()
+    {
+        await OnAddWater.InvokeAsync();
+    }
+
+    private string GetStatusMessage()
+    {
+        var percentage = GetProgressPercentage();
+        if (percentage >= 100) return "Goal Achieved!";
+        if (percentage >= 75) return "Almost There!";
+        if (percentage >= 50) return "Great Progress!";
+        if (percentage >= 25) return "Getting Started!";
+        return "Let's Begin!";
+    }
+
+    private void NavigateToTab(string path)
+    {
+        Navigation.NavigateTo(path);
+    }
+
+    private string GetTabClass(string path)
+    {
+        var isActive = currentPath == path.TrimStart('/') ||
+                      (path == "/" && string.IsNullOrEmpty(currentPath));
+
+        return isActive
+            ? "bg-white/30 text-white border-2 border-white/50 shadow-lg transform scale-105"
+            : "bg-white/10 text-white/80 hover:bg-white/20 hover:text-white border-2 border-white/20 hover:scale-102";
+    }
+
+    private async Task HandleLogout()
+    {
+        try
+        {
+            await Http.DeleteAsync("api/sessions/current");
+
+            // Notify the authentication state provider
+            if (AuthenticationStateProvider is CustomAuthenticationStateProvider customProvider)
+            {
+                customProvider.NotifyUserLogout();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Logout error: {ex.Message}");
+        }
+
+        Navigation.NavigateTo("/login");
+    }
+}

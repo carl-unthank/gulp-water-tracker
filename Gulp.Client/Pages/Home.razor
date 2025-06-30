@@ -1,0 +1,181 @@
+@page "/"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Gulp.Shared.DTOs
+@using Gulp.Client.Components.UI
+@using Gulp.Client.Components.Navigation
+@using Gulp.Client.Services
+@attribute [Authorize]
+@inherits StateAwareComponent
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject IApiClient ApiClient
+@inject WaterIntakeNotificationService NotificationService
+@inject ActionMenuService ActionMenuService
+@implements IDisposable
+
+<PageTitle>Home - Gulp</PageTitle>
+
+<!-- Daily Progress Chart -->
+@if (State?.CurrentGoal != null)
+{
+    <DailyProgressChart
+        CurrentAmount="@State.TotalTodayAmount"
+        TargetAmount="@State.CurrentGoal.TargetAmountMl"
+        IntakeCount="@State.IntakeCount" />
+}
+else
+{
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Daily Progress</h2>
+        <p class="text-gray-600">Loading your progress...</p>
+    </div>
+}
+
+<!-- Weekly Completion -->
+<WeeklyCompletion WeeklyProgress="@weeklyProgress" />
+
+<!-- Daily Goal Management -->
+<DailyGoalManager OnGoalUpdated="@HandleGoalUpdated" />
+
+<!-- Today's Water Intake List -->
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100">
+    @if (State?.TodayIntakes != null)
+    {
+        <WaterIntakeList Intakes="@State.TodayIntakes"
+                       ShowDate="false"
+                       ShowGoalProgress="false"
+                       AllowEdit="true"
+                       AllowQuickAdd="false"
+                       EmptyMessage="No water logged today"
+                       EmptySubMessage="Start tracking your hydration!"
+                       OnQuickAdd="AddQuickAmount"
+                       OnEdit="EditWaterIntake"
+                       OnDelete="DeleteWaterIntake" />
+    }
+    else
+    {
+        <div class="p-6">
+            <p class="text-gray-600">Loading today's intake...</p>
+        </div>
+    }
+</div>
+
+
+
+@code {
+    private List<DailyProgressDto> weeklyProgress = new();
+    private List<DailyProgressDto> progressData = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await LoadProgressData();
+
+        // Subscribe to notifications
+        NotificationService.WaterIntakeUpdated += OnWaterIntakeUpdated;
+        NotificationService.GoalUpdated += OnGoalUpdated;
+    }
+
+    private async Task LoadProgressData()
+    {
+        try
+        {
+            // Load weekly progress (last 7 days)
+            var endDate = DateTime.Today;
+            var startDate = endDate.AddDays(-6);
+            weeklyProgress = await StateService.GetDailyProgressAsync(startDate, endDate);
+
+            // Load monthly progress for stats (last 30 days)
+            var monthStartDate = endDate.AddDays(-29);
+            progressData = await StateService.GetDailyProgressAsync(monthStartDate, endDate);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading progress data: {ex.Message}");
+        }
+    }
+
+    private async Task AddQuickAmount(int amountMl)
+    {
+        try
+        {
+            var createDto = new CreateWaterIntakeDto
+            {
+                AmountMl = amountMl,
+                ConsumedAt = DateTime.UtcNow
+            };
+
+            await StateService.AddIntakeAsync(createDto);
+            await LoadProgressData(); // Refresh progress data
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error adding water: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteWaterIntake(int intakeId)
+    {
+        try
+        {
+            await StateService.DeleteIntakeAsync(intakeId);
+            await LoadProgressData(); // Refresh progress data
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting water intake: {ex.Message}");
+        }
+    }
+
+    private void EditWaterIntake(WaterIntakeDto intake)
+    {
+        try
+        {
+            // Use the ActionMenuService to request edit
+            ActionMenuService.RequestEdit(intake);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error preparing to edit water intake: {ex.Message}");
+        }
+    }
+
+    private async Task HandleGoalUpdated(DailyGoalDto goal)
+    {
+        await StateService.LoadCurrentGoalAsync();
+        await LoadProgressData(); // Refresh progress data
+    }
+
+    private async void OnWaterIntakeUpdated()
+    {
+        await InvokeAsync(async () =>
+        {
+            await StateService.LoadTodayIntakesAsync();
+            await LoadProgressData();
+            StateHasChanged();
+        });
+    }
+
+    private async void OnGoalUpdated()
+    {
+        await InvokeAsync(async () =>
+        {
+            await StateService.LoadCurrentGoalAsync();
+            await LoadProgressData();
+            StateHasChanged();
+        });
+    }
+
+    private void ShowAddWaterModal()
+    {
+        NotificationService.RequestShowAddWaterModal();
+    }
+
+    public new void Dispose()
+    {
+        NotificationService.WaterIntakeUpdated -= OnWaterIntakeUpdated;
+        NotificationService.GoalUpdated -= OnGoalUpdated;
+    }
+
+
+}

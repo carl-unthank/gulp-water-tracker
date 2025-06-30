@@ -1,0 +1,267 @@
+@page "/history"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Gulp.Shared.DTOs
+@using Gulp.Client.Services
+@using Gulp.Client.Components.UI
+@using Gulp.Client.Components.Navigation
+@attribute [Authorize]
+@inherits StateAwareComponent
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject IApiClient ApiClient
+@inject WaterIntakeNotificationService NotificationService
+@inject ActionMenuService ActionMenuService
+@implements IDisposable
+
+<PageTitle>History - Gulp</PageTitle>
+
+<!-- Hydration Stats -->
+<HydrationStats ProgressData="@progressData" />
+
+<!-- Date Range Navigator -->
+<DateRangeNavigator OnDateRangeChanged="OnDateRangeChanged" />
+
+
+<!-- History Data -->
+    @if (isLoadingHistory)
+    {
+        <LoadingIndicator Size="small" Message="Loading history..." />
+    }
+    else if (historyData?.Any() == true)
+    {
+        <div class="space-y-4">
+            @foreach (var dayHistory in historyData.OrderByDescending(h => h.Date))
+            {
+                <div class="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
+                    <div class="bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 text-white p-6 relative overflow-hidden">
+                        <div class="absolute inset-0 opacity-10">
+                            <svg class="w-full h-full" viewBox="0 0 100 100" fill="none">
+                                <defs>
+                                    <pattern id="day-grid-@dayHistory.Date.Day" width="15" height="15" patternUnits="userSpaceOnUse">
+                                        <circle cx="7.5" cy="7.5" r="1" fill="currentColor"/>
+                                    </pattern>
+                                </defs>
+                                <rect width="100" height="100" fill="url(#day-grid-@dayHistory.Date.Day)" />
+                            </svg>
+                        </div>
+
+                        <div class="relative z-10">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center space-x-4">
+                                    <div class="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm shadow-lg">
+                                        <span class="text-2xl">💧</span>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xl font-bold">@dayHistory.Date.ToString("dddd")</h3>
+                                        <p class="text-blue-100">@dayHistory.Date.ToString("MMMM dd, yyyy")</p>
+                                    </div>
+                                </div>
+
+                                <div class="text-right">
+                                    <div class="text-3xl font-bold">@Math.Round(dayHistory.ProgressPercentage, 0)%</div>
+                                    <div class="text-sm text-blue-200">
+                                        @if (dayHistory.GoalAchieved)
+                                        {
+                                            <span>🎯 Goal Achieved!</span>
+                                        }
+                                        else
+                                        {
+                                            <span>@(dayHistory.GoalMl - dayHistory.TotalMl) ml to go</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Enhanced Stats Row -->
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div class="bg-white/20 rounded-xl p-3 backdrop-blur-sm border border-white/30">
+                                    <div class="text-lg font-bold">@dayHistory.TotalMl ml</div>
+                                    <div class="text-xs text-blue-200">consumed</div>
+                                </div>
+                                <div class="bg-white/20 rounded-xl p-3 backdrop-blur-sm border border-white/30">
+                                    <div class="text-lg font-bold">@dayHistory.GoalMl ml</div>
+                                    <div class="text-xs text-blue-200">goal</div>
+                                </div>
+                            </div>
+
+                            <!-- Enhanced Progress Bar -->
+                            <div class="w-full bg-white/20 rounded-full h-3 backdrop-blur-sm overflow-hidden">
+                                <div class="@GetProgressBarClass(dayHistory.GoalAchieved) h-3 rounded-full transition-all duration-1000 ease-out shadow-lg"
+                                     style="--progress-width: @Math.Min(dayHistory.ProgressPercentage, 100)%; width: var(--progress-width)"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Day Intakes -->
+                    @if (dayHistory.Intakes.Any())
+                    {
+                        <WaterIntakeList Intakes="dayHistory.Intakes"
+                                       ShowDate="false"
+                                       ShowGoalProgress="false"
+                                       AllowEdit="true"
+                                       AllowQuickAdd="false"
+                                       EmptyMessage=""
+                                       EmptySubMessage=""
+                                       OnQuickAdd="AddQuickAmount"
+                                       OnEdit="EditWaterIntake"
+                                       OnDelete="DeleteWaterIntake" />
+                    }
+                    else
+                    {
+                        <div class="text-center py-8">
+                            <div class="text-4xl mb-3">💧</div>
+                            <p class="text-gray-600">No water logged this day</p>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
+            <div class="text-gray-400 text-6xl mb-4">📊</div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">No History Found</h3>
+            <p class="text-gray-600">No hydration data found for the selected @(currentViewType.ToString().ToLower()) period.</p>
+            <p class="text-gray-500 text-sm mt-2">Try selecting a different time period or start tracking your water intake!</p>
+        </div>
+    }
+
+
+
+@code {
+    private List<HistoryDto>? historyData;
+    private List<DailyProgressDto> progressData = new();
+    private bool isLoadingHistory = false;
+    private DateRangeNavigator.ViewType currentViewType = DateRangeNavigator.ViewType.Weekly;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await LoadHistory();
+        await LoadProgressData();
+
+        // Subscribe to water intake notifications
+        NotificationService.WaterIntakeUpdated += OnWaterIntakeUpdated;
+    }
+
+    private async Task LoadHistory(DateTime? startDate = null, DateTime? endDate = null)
+    {
+        try
+        {
+            isLoadingHistory = true;
+            StateHasChanged();
+
+            // Default to current week if no dates provided
+            var start = startDate ?? DateTime.Today.AddDays(-7);
+            var end = endDate ?? DateTime.Today;
+
+            // Load all data for the date range (no pagination needed for week/month)
+            historyData = await StateService.GetHistoryAsync(start, end, 1, 100);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading history: {ex.Message}");
+        }
+        finally
+        {
+            isLoadingHistory = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnDateRangeChanged(DateRangeNavigator.DateRangeChangedEventArgs args)
+    {
+        currentViewType = args.ViewType;
+        await LoadHistory(args.StartDate, args.EndDate);
+    }
+
+    private async Task AddQuickAmount(int amountMl)
+    {
+        try
+        {
+            var createDto = new CreateWaterIntakeDto
+            {
+                AmountMl = amountMl,
+                ConsumedAt = DateTime.UtcNow
+            };
+
+            await StateService.AddIntakeAsync(createDto);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error adding water: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteWaterIntake(int intakeId)
+    {
+        try
+        {
+            await StateService.DeleteIntakeAsync(intakeId);
+            // Reload history data to reflect the deletion
+            await LoadHistory();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting water intake: {ex.Message}");
+        }
+    }
+
+    private void EditWaterIntake(WaterIntakeDto intake)
+    {
+        try
+        {
+            // Use the ActionMenuService to request edit
+            ActionMenuService.RequestEdit(intake);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error preparing to edit water intake: {ex.Message}");
+        }
+    }
+
+    private async Task LoadProgressData()
+    {
+        try
+        {
+            // Load monthly progress for stats (last 30 days)
+            var monthStartDate = DateTime.Today.AddDays(-29);
+            var monthEndDate = DateTime.Today;
+            progressData = await StateService.GetDailyProgressAsync(monthStartDate, monthEndDate);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading progress data: {ex.Message}");
+        }
+    }
+
+    private string GetProgressBarClass(bool goalAchieved)
+    {
+        return goalAchieved
+            ? "bg-gradient-to-r from-green-400 to-green-500 shadow-lg"
+            : "bg-gradient-to-r from-blue-400 to-blue-500";
+    }
+
+    private async void OnWaterIntakeUpdated()
+    {
+        await InvokeAsync(async () =>
+        {
+            await StateService.LoadTodayIntakesAsync();
+            await LoadHistory();
+            await LoadProgressData();
+            StateHasChanged();
+        });
+    }
+
+    private void ShowAddWaterModal()
+    {
+        NotificationService.RequestShowAddWaterModal();
+    }
+
+    public new void Dispose()
+    {
+        NotificationService.WaterIntakeUpdated -= OnWaterIntakeUpdated;
+    }
+
+}

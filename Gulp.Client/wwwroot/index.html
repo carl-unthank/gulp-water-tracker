@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gulp! - Water Consumption Tracker</title>
+    <base href="/" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'ocean': {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        'aqua': {
+                            50: '#ecfeff',
+                            100: '#cffafe',
+                            200: '#a5f3fc',
+                            300: '#67e8f9',
+                            400: '#22d3ee',
+                            500: '#06b6d4',
+                            600: '#0891b2',
+                            700: '#0e7490',
+                            800: '#155e75',
+                            900: '#164e63',
+                        },
+                        'coral': {
+                            50: '#fef2f2',
+                            100: '#fee2e2',
+                            200: '#fecaca',
+                            300: '#fca5a5',
+                            400: '#f87171',
+                            500: '#ef4444',
+                            600: '#dc2626',
+                            700: '#b91c1c',
+                            800: '#991b1b',
+                            900: '#7f1d1d',
+                        },
+                        'mint': {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            300: '#86efac',
+                            400: '#4ade80',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        },
+                        'slate': {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                        }
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    backgroundImage: {
+                        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+                    },
+                    borderWidth: {
+                        '3': '3px',
+                    },
+                    animation: {
+                        'wave': 'wave 2s ease-in-out infinite',
+                        'ripple': 'ripple 1s ease-out',
+                        'float': 'float 3s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        wave: {
+                            '0%, 100%': { transform: 'rotate(0deg)' },
+                            '50%': { transform: 'rotate(3deg)' },
+                        },
+                        ripple: {
+                            '0%': { transform: 'scale(0)', opacity: '1' },
+                            '100%': { transform: 'scale(4)', opacity: '0' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="Gulp.Client.styles.css" rel="stylesheet" />
+</head>
+
+<body class="bg-gradient-to-br from-water-blue-50 to-aqua-50 font-sans">
+    <div id="app">
+        <div class="min-h-screen flex items-center justify-center">
+            <div class="text-center">
+                <div class="relative mb-8">
+                    <div class="w-24 h-24 mx-auto bg-gradient-to-br from-water-blue-400 to-aqua-400 rounded-full animate-float shadow-lg"></div>
+                    <div class="absolute inset-0 w-24 h-24 mx-auto bg-gradient-to-br from-water-blue-300 to-aqua-300 rounded-full animate-ripple opacity-30"></div>
+                </div>
+                <h1 class="text-4xl font-bold text-water-blue-800 mb-2">Gulp!</h1>
+                <p class="text-water-blue-600 text-lg">Loading your water tracker...</p>
+                <div class="mt-6 flex justify-center">
+                    <div class="flex space-x-1">
+                        <div class="w-2 h-2 bg-gradient-to-r from-water-blue-400 to-aqua-400 rounded-full animate-bounce"></div>
+                        <div class="w-2 h-2 bg-gradient-to-r from-aqua-400 to-water-blue-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                        <div class="w-2 h-2 bg-gradient-to-r from-water-blue-500 to-aqua-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui" class="fixed bottom-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-lg max-w-sm">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="font-semibold">An error occurred</p>
+                <p class="text-sm opacity-90">Something went wrong. Please try again.</p>
+            </div>
+            <div class="ml-4 flex space-x-2">
+                <a href="." class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm transition-colors">Reload</a>
+                <button class="text-red-200 hover:text-white text-xl leading-none" onclick="document.getElementById('blazor-error-ui').style.display='none'">×</button>
+            </div>
+        </div>
+    </div>
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+
+</html>

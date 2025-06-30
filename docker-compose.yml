@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  gulp-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: gulp-database
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=GulpApp123!
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - gulp_db_data:/var/opt/mssql
+    networks:
+      - gulp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P GulpApp123! -Q 'SELECT 1'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  gulp-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gulp-application
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=gulp-db,1433;Database=GulpDb;User Id=sa;Password=GulpApp123!;TrustServerCertificate=true;
+      - JwtSettings__SecretKey=YourSuperSecretKeyForJWTTokensThatShouldBeAtLeast32Characters!
+      - JwtSettings__Issuer=GulpApp
+      - JwtSettings__Audience=GulpUsers
+      - JwtSettings__ExpiryInMinutes=60
+    ports:
+      - "5000:8080"
+    depends_on:
+      gulp-db:
+        condition: service_healthy
+    networks:
+      - gulp-network
+    restart: unless-stopped
+    volumes:
+      - gulp_app_logs:/app/logs
+
+volumes:
+  gulp_db_data:
+    driver: local
+  gulp_app_logs:
+    driver: local
+
+networks:
+  gulp-network:
+    driver: bridge

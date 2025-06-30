@@ -1,0 +1,72 @@
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<!-- Desktop Navigation (hidden on mobile) -->
+<div class="hidden md:block bg-white shadow-sm border-b border-gray-100 sticky top-10 z-40">
+    <div class="max-w-4xl mx-auto px-6 py-4">
+        <div class="flex items-center justify-between">
+            <!-- Navigation Tabs -->
+            <div class="flex items-center space-x-1">
+                <button @onclick='() => NavigateToTab("/")'
+                        class="px-6 py-2 rounded-lg font-medium transition-all duration-200 @GetTabClass("/")">
+                    <div class="flex items-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                        </svg>
+                        <span>Home</span>
+                    </div>
+                </button>
+                
+                <button @onclick='() => NavigateToTab("/history")'
+                        class="px-6 py-2 rounded-lg font-medium transition-all duration-200 @GetTabClass("/history")">
+                    <div class="flex items-center space-x-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        <span>History</span>
+                    </div>
+                </button>
+            </div>
+
+
+        </div>
+    </div>
+</div>
+
+@code {
+    private string currentPath = "";
+
+    protected override void OnInitialized()
+    {
+        currentPath = Navigation.ToBaseRelativePath(Navigation.Uri);
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        currentPath = Navigation.ToBaseRelativePath(e.Location);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string GetTabClass(string path)
+    {
+        var isActive = currentPath == path.TrimStart('/') || 
+                      (path == "/" && string.IsNullOrEmpty(currentPath));
+        
+        return isActive 
+            ? "bg-blue-100 text-blue-700" 
+            : "text-gray-600 hover:text-blue-600 hover:bg-blue-50";
+    }
+
+    private void NavigateToTab(string path)
+    {
+        Navigation.NavigateTo(path);
+    }
+
+
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

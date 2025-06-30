@@ -1,0 +1,179 @@
+@typeparam TValue
+@inherits InputBase<TValue>
+
+<div class="flex flex-col gap-2 @(FullWidth ? "w-full" : "")">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label for="@Id" class="font-medium text-gray-700 text-sm mb-0 @(IsRequired ? "after:content-['*'] after:text-red-500 after:ml-1" : "")">
+            @Label
+        </label>
+    }
+
+    <div class="relative flex items-center">
+        @if (!string.IsNullOrEmpty(LeftIcon))
+        {
+            <div class="absolute left-3 z-10 text-gray-400">
+                <i class="@LeftIcon"></i>
+            </div>
+        }
+
+        <input @bind="CurrentValue"
+               @bind:event="oninput"
+               @onblur="OnBlur"
+               @onfocus="OnFocus"
+               id="@Id"
+               type="@Type"
+               class="@GetInputClasses()"
+               placeholder="@Placeholder"
+               disabled="@IsDisabled"
+               readonly="@IsReadOnly"
+               min="@Min"
+               max="@Max"
+               step="@Step"
+               @attributes="@AdditionalAttributes" />
+
+        @if (!string.IsNullOrEmpty(RightIcon))
+        {
+            <div class="absolute right-3 z-10 text-gray-400">
+                <i class="@RightIcon"></i>
+            </div>
+        }
+
+        @if (ShowClearButton && !string.IsNullOrEmpty(CurrentValueAsString))
+        {
+            <button type="button" class="absolute right-3 z-10 text-gray-400 hover:text-gray-600 focus:outline-none" @onclick="@ClearValue">
+                <i class="fas fa-times"></i>
+            </button>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(HelpText) && !HasError)
+    {
+        <small class="text-gray-500 text-xs">@HelpText</small>
+    }
+
+    @if (HasError && !string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="text-red-500 text-sm flex items-center gap-1">
+            <i class="fas fa-exclamation-circle"></i>
+            @ErrorMessage
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string Type { get; set; } = "text";
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? HelpText { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public string? LeftIcon { get; set; }
+    [Parameter] public string? RightIcon { get; set; }
+    [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public bool IsDisabled { get; set; }
+    [Parameter] public bool IsReadOnly { get; set; }
+    [Parameter] public bool FullWidth { get; set; } = true;
+    [Parameter] public bool ShowClearButton { get; set; }
+    [Parameter] public InputSize Size { get; set; } = InputSize.Medium;
+    [Parameter] public string? Min { get; set; }
+    [Parameter] public string? Max { get; set; }
+    [Parameter] public string? Step { get; set; }
+    [Parameter] public EventCallback OnFocus { get; set; }
+    [Parameter] public EventCallback OnBlur { get; set; }
+
+    private bool HasError => !string.IsNullOrEmpty(ErrorMessage);
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrEmpty(Id))
+        {
+            Id = Guid.NewGuid().ToString("N")[..8];
+        }
+    }
+
+    private string GetInputClasses()
+    {
+        var classes = new List<string>
+        {
+            "w-full", "border", "rounded-md", "text-gray-700", "bg-white",
+            "transition-colors", "focus:outline-none", "focus:ring-2", "focus:ring-offset-2"
+        };
+
+        // Size variants
+        classes.AddRange(Size switch
+        {
+            InputSize.Small => new[] { "px-3", "py-1.5", "text-xs" },
+            InputSize.Large => new[] { "px-4", "py-4", "text-base" },
+            _ => new[] { "px-3", "py-2", "text-sm" }
+        });
+
+        // Error state
+        if (HasError)
+        {
+            classes.AddRange(new[] { "border-red-500", "focus:border-red-500", "focus:ring-red-500" });
+        }
+        else
+        {
+            classes.AddRange(new[] { "border-gray-300", "focus:border-blue-500", "focus:ring-blue-500" });
+        }
+
+        // Icon padding adjustments
+        if (!string.IsNullOrEmpty(LeftIcon))
+            classes.Add("pl-10");
+
+        if (!string.IsNullOrEmpty(RightIcon) || ShowClearButton)
+            classes.Add("pr-10");
+
+        // Disabled state
+        if (IsDisabled)
+            classes.AddRange(new[] { "bg-gray-50", "text-gray-500", "cursor-not-allowed" });
+
+        return string.Join(" ", classes);
+    }
+
+    private async Task ClearValue()
+    {
+        CurrentValue = default;
+        await ValueChanged.InvokeAsync(CurrentValue);
+    }
+
+    protected override bool TryParseValueFromString(string? value, out TValue result, out string? validationErrorMessage)
+    {
+        result = default!;
+        validationErrorMessage = null;
+
+        if (typeof(TValue) == typeof(string))
+        {
+            result = (TValue)(object)(value ?? string.Empty);
+            return true;
+        }
+        else if (typeof(TValue) == typeof(int) || typeof(TValue) == typeof(int?))
+        {
+            if (int.TryParse(value, out var intResult))
+            {
+                result = (TValue)(object)intResult;
+                return true;
+            }
+        }
+        else if (typeof(TValue) == typeof(decimal) || typeof(TValue) == typeof(decimal?))
+        {
+            if (decimal.TryParse(value, out var decimalResult))
+            {
+                result = (TValue)(object)decimalResult;
+                return true;
+            }
+        }
+        else if (typeof(TValue) == typeof(DateTime) || typeof(TValue) == typeof(DateTime?))
+        {
+            if (DateTime.TryParse(value, out var dateResult))
+            {
+                result = (TValue)(object)dateResult;
+                return true;
+            }
+        }
+
+        validationErrorMessage = $"The value '{value}' is not valid for {typeof(TValue).Name}.";
+        return false;
+    }
+}

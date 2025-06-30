@@ -1,0 +1,80 @@
+@inherits ComponentBase
+
+<button type="@Type" 
+        class="@GetCssClasses()" 
+        disabled="@(IsDisabled || IsLoading)"
+        @onclick="@OnClick"
+        @attributes="@AdditionalAttributes">
+    @if (IsLoading)
+    {
+        <span class="absolute w-4 h-4 border-2 border-current border-r-transparent rounded-full animate-spin"></span>
+    }
+    @if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.Left)
+    {
+        <i class="@Icon @(ChildContent != null ? "mr-2" : "")"></i>
+    }
+    @ChildContent
+    @if (!string.IsNullOrEmpty(Icon) && IconPosition == IconPosition.Right)
+    {
+        <i class="@Icon @(ChildContent != null ? "ml-2" : "")"></i>
+    }
+</button>
+
+@code {
+    [Parameter] public string Type { get; set; } = "button";
+    [Parameter] public ButtonVariant Variant { get; set; } = ButtonVariant.Primary;
+    [Parameter] public ButtonSize Size { get; set; } = ButtonSize.Medium;
+    [Parameter] public bool IsDisabled { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool FullWidth { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public IconPosition IconPosition { get; set; } = IconPosition.Left;
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string GetCssClasses()
+    {
+        var classes = new List<string>
+        {
+            // Base button styles
+            "inline-flex", "items-center", "justify-center", "border", "rounded-md",
+            "font-medium", "no-underline", "cursor-pointer", "transition-all", "duration-200",
+            "select-none", "whitespace-nowrap", "align-middle", "focus:outline-none", "focus:ring-2", "focus:ring-offset-2"
+        };
+
+        // Size variants
+        classes.AddRange(Size switch
+        {
+            ButtonSize.Small => new[] { "px-3", "py-1.5", "text-xs" },
+            ButtonSize.Large => new[] { "px-6", "py-4", "text-base" },
+            _ => new[] { "px-4", "py-2", "text-sm" }
+        });
+
+        // Color variants
+        classes.AddRange(Variant switch
+        {
+            ButtonVariant.Primary => new[] { "bg-blue-500", "border-blue-500", "text-white", "hover:bg-blue-600", "hover:border-blue-600", "focus:ring-blue-500", "disabled:opacity-60", "disabled:cursor-not-allowed" },
+            ButtonVariant.Secondary => new[] { "bg-gray-500", "border-gray-500", "text-white", "hover:bg-gray-600", "hover:border-gray-600", "focus:ring-gray-500", "disabled:opacity-60", "disabled:cursor-not-allowed" },
+            ButtonVariant.Success => new[] { "bg-emerald-500", "border-emerald-500", "text-white", "hover:bg-emerald-600", "hover:border-emerald-600", "focus:ring-emerald-500", "disabled:opacity-60", "disabled:cursor-not-allowed" },
+            ButtonVariant.Danger => new[] { "bg-red-500", "border-red-500", "text-white", "hover:bg-red-600", "hover:border-red-600", "focus:ring-red-500", "disabled:opacity-60", "disabled:cursor-not-allowed" },
+            ButtonVariant.Warning => new[] { "bg-amber-500", "border-amber-500", "text-white", "hover:bg-amber-600", "hover:border-amber-600", "focus:ring-amber-500", "disabled:opacity-60", "disabled:cursor-not-allowed" },
+            ButtonVariant.Info => new[] { "bg-cyan-500", "border-cyan-500", "text-white", "hover:bg-cyan-600", "hover:border-cyan-600", "focus:ring-cyan-500", "disabled:opacity-60", "disabled:cursor-not-allowed" },
+            ButtonVariant.Light => new[] { "bg-slate-50", "border-slate-200", "text-slate-800", "hover:bg-slate-100", "hover:border-slate-300", "focus:ring-slate-500", "disabled:opacity-60", "disabled:cursor-not-allowed" },
+            ButtonVariant.Dark => new[] { "bg-slate-800", "border-slate-800", "text-white", "hover:bg-slate-900", "hover:border-slate-900", "focus:ring-slate-500", "disabled:opacity-60", "disabled:cursor-not-allowed" },
+            ButtonVariant.OutlinePrimary => new[] { "bg-transparent", "border-blue-500", "text-blue-500", "hover:bg-blue-500", "hover:text-white", "focus:ring-blue-500", "disabled:opacity-60", "disabled:cursor-not-allowed" },
+            ButtonVariant.OutlineSecondary => new[] { "bg-transparent", "border-gray-500", "text-gray-500", "hover:bg-gray-500", "hover:text-white", "focus:ring-gray-500", "disabled:opacity-60", "disabled:cursor-not-allowed" },
+            ButtonVariant.OutlineDanger => new[] { "bg-transparent", "border-red-500", "text-red-500", "hover:bg-red-500", "hover:text-white", "focus:ring-red-500", "disabled:opacity-60", "disabled:cursor-not-allowed" },
+            ButtonVariant.Link => new[] { "bg-transparent", "border-transparent", "text-blue-500", "hover:text-blue-600", "hover:underline", "focus:ring-blue-500", "disabled:opacity-60", "disabled:cursor-not-allowed" },
+            _ => new[] { "bg-blue-500", "border-blue-500", "text-white", "hover:bg-blue-600", "hover:border-blue-600", "focus:ring-blue-500", "disabled:opacity-60", "disabled:cursor-not-allowed" }
+        });
+
+        if (FullWidth)
+            classes.Add("w-full");
+
+        if (IsLoading)
+            classes.AddRange(new[] { "relative", "text-transparent" });
+
+        return string.Join(" ", classes);
+    }
+}

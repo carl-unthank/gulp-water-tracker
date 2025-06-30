@@ -1,0 +1,122 @@
+@using Gulp.Shared.DTOs
+@inject IApiClient ApiClient
+@inject IAuthStateService AuthStateService
+@inject NavigationManager Navigation
+
+<div class="max-w-md mx-auto p-8">
+    <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">Create Account</h3>
+    
+    <EditForm Model="@registerModel" OnValidSubmit="@HandleRegister" FormName="RegisterForm">
+        <DataAnnotationsValidator />
+        
+        <div class="grid grid-cols-2 gap-4">
+            <Input @bind-Value="registerModel.FirstName"
+                   Label="First Name"
+                   Placeholder="Enter your first name"
+                   LeftIcon="fas fa-user"
+                   IsRequired="true"
+                   ErrorMessage="@GetFieldError(nameof(registerModel.FirstName))" />
+
+            <Input @bind-Value="registerModel.LastName"
+                   Label="Last Name"
+                   Placeholder="Enter your last name"
+                   LeftIcon="fas fa-user"
+                   IsRequired="true"
+                   ErrorMessage="@GetFieldError(nameof(registerModel.LastName))" />
+        </div>
+
+        <Input @bind-Value="registerModel.Email"
+               Label="Email"
+               Type="email"
+               Placeholder="Enter your email"
+               LeftIcon="fas fa-envelope"
+               IsRequired="true"
+               ErrorMessage="@GetFieldError(nameof(registerModel.Email))" />
+
+        <Input @bind-Value="registerModel.Password"
+               Label="Password"
+               Type="password"
+               Placeholder="Enter your password"
+               LeftIcon="fas fa-lock"
+               IsRequired="true"
+               ErrorMessage="@GetFieldError(nameof(registerModel.Password))" />
+
+        <Input @bind-Value="registerModel.ConfirmPassword"
+               Label="Confirm Password"
+               Type="password"
+               Placeholder="Confirm your password"
+               LeftIcon="fas fa-lock"
+               IsRequired="true"
+               ErrorMessage="@GetFieldError(nameof(registerModel.ConfirmPassword))" />
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4">
+                @errorMessage
+            </div>
+        }
+
+        <Button Type="submit"
+                Variant="ButtonVariant.Primary"
+                FullWidth="true"
+                IsLoading="@isLoading"
+                IsDisabled="@isLoading">
+            Create Account
+        </Button>
+    </EditForm>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnRegisterSuccess { get; set; }
+
+    private RegisterDto registerModel = new();
+    private string errorMessage = string.Empty;
+    private bool isLoading = false;
+    private EditContext? editContext;
+
+    private async Task HandleRegister()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+            StateHasChanged();
+
+            var success = await AuthStateService.RegisterAsync(registerModel);
+
+            if (success)
+            {
+                await OnRegisterSuccess.InvokeAsync();
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                errorMessage = AuthStateService.LastErrorMessage ?? "Registration failed. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "An error occurred during registration. Please try again.";
+            Console.WriteLine($"Registration error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        editContext = new EditContext(registerModel);
+    }
+
+    private string? GetFieldError(string fieldName)
+    {
+        if (editContext?.GetValidationMessages(new FieldIdentifier(registerModel, fieldName)).Any() == true)
+        {
+            return editContext.GetValidationMessages(new FieldIdentifier(registerModel, fieldName)).First();
+        }
+        return null;
+    }
+}

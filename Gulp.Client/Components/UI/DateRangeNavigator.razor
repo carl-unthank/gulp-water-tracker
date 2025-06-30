@@ -1,0 +1,246 @@
+<!-- Date Range Navigator -->
+<div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+    <!-- View Toggle - More Prominent -->
+    <div class="flex items-center justify-center mb-6">
+        <div class="bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 rounded-2xl p-2 flex shadow-lg">
+            <button @onclick="() => SetViewType(ViewType.Weekly)"
+                    class="px-6 py-3 rounded-xl text-base font-semibold transition-all duration-300 @GetViewButtonClass(ViewType.Weekly)">
+                <div class="flex items-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <span>Weekly</span>
+                </div>
+            </button>
+            <button @onclick="() => SetViewType(ViewType.Monthly)"
+                    class="px-6 py-3 rounded-xl text-base font-semibold transition-all duration-300 @GetViewButtonClass(ViewType.Monthly)">
+                <div class="flex items-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    <span>Monthly</span>
+                </div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Navigation Controls -->
+    <div class="flex items-center justify-between">
+        <!-- Previous Button -->
+        <button @onclick="NavigatePrevious"
+                disabled="@(!CanNavigatePrevious())"
+                class="flex items-center space-x-2 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            <span>Previous</span>
+        </button>
+
+        <!-- Current Period Display -->
+        <div class="text-center">
+            <h3 class="text-lg font-semibold text-gray-900">@GetCurrentPeriodDisplay()</h3>
+            <p class="text-sm text-gray-500">@GetDateRangeDisplay()</p>
+        </div>
+
+        <!-- Next Button -->
+        <button @onclick="NavigateNext"
+                disabled="@(!CanNavigateNext())"
+                class="flex items-center space-x-2 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+            <span>Next</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Quick Navigation -->
+    <div class="mt-4 flex flex-wrap gap-2 justify-center">
+        <button @onclick="NavigateToCurrentPeriod"
+                class="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors">
+            Current @(currentViewType == ViewType.Weekly ? "Week" : "Month")
+        </button>
+        
+        @if (currentViewType == ViewType.Weekly)
+        {
+            <button @onclick="NavigateToLastWeek"
+                    class="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                Last Week
+            </button>
+        }
+        else
+        {
+            <button @onclick="NavigateToLastMonth"
+                    class="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                Last Month
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback<DateRangeChangedEventArgs> OnDateRangeChanged { get; set; }
+    
+    public enum ViewType { Weekly, Monthly }
+    
+    private ViewType currentViewType = ViewType.Weekly;
+    private DateTime currentPeriodStart = DateTime.Today;
+    private DateTime currentPeriodEnd = DateTime.Today;
+
+    protected override async Task OnInitializedAsync()
+    {
+        SetCurrentPeriod();
+        await NotifyDateRangeChanged();
+    }
+
+    private async Task SetViewType(ViewType viewType)
+    {
+        currentViewType = viewType;
+        SetCurrentPeriod();
+        await NotifyDateRangeChanged();
+    }
+
+    private void SetCurrentPeriod()
+    {
+        var today = DateTime.Today;
+        
+        if (currentViewType == ViewType.Weekly)
+        {
+            // Get current week (Monday to Sunday)
+            var daysFromMonday = (int)today.DayOfWeek - (int)DayOfWeek.Monday;
+            if (daysFromMonday < 0) daysFromMonday += 7; // Handle Sunday
+
+            currentPeriodStart = today.AddDays(-daysFromMonday);
+            currentPeriodEnd = currentPeriodStart.AddDays(6);
+        }
+        else
+        {
+            // Get current month
+            currentPeriodStart = new DateTime(today.Year, today.Month, 1);
+            currentPeriodEnd = currentPeriodStart.AddMonths(1).AddDays(-1);
+
+            // For monthly view, don't go beyond today
+            if (currentPeriodEnd > today)
+                currentPeriodEnd = today;
+        }
+    }
+
+    private async Task NavigatePrevious()
+    {
+        if (currentViewType == ViewType.Weekly)
+        {
+            currentPeriodStart = currentPeriodStart.AddDays(-7);
+            currentPeriodEnd = currentPeriodStart.AddDays(6);
+        }
+        else
+        {
+            currentPeriodStart = currentPeriodStart.AddMonths(-1);
+            currentPeriodEnd = currentPeriodStart.AddMonths(1).AddDays(-1);
+        }
+
+        await NotifyDateRangeChanged();
+    }
+
+    private async Task NavigateNext()
+    {
+        if (currentViewType == ViewType.Weekly)
+        {
+            currentPeriodStart = currentPeriodStart.AddDays(7);
+            currentPeriodEnd = currentPeriodStart.AddDays(6);
+        }
+        else
+        {
+            currentPeriodStart = currentPeriodStart.AddMonths(1);
+            currentPeriodEnd = currentPeriodStart.AddMonths(1).AddDays(-1);
+
+            // For monthly view, don't go beyond today
+            var today = DateTime.Today;
+            if (currentPeriodEnd > today)
+                currentPeriodEnd = today;
+        }
+
+        await NotifyDateRangeChanged();
+    }
+
+    private async Task NavigateToCurrentPeriod()
+    {
+        SetCurrentPeriod();
+        await NotifyDateRangeChanged();
+    }
+
+    private async Task NavigateToLastWeek()
+    {
+        var today = DateTime.Today;
+        var daysFromMonday = (int)today.DayOfWeek - (int)DayOfWeek.Monday;
+        if (daysFromMonday < 0) daysFromMonday += 7;
+
+        currentPeriodStart = today.AddDays(-daysFromMonday - 7);
+        currentPeriodEnd = currentPeriodStart.AddDays(6);
+        await NotifyDateRangeChanged();
+    }
+
+    private async Task NavigateToLastMonth()
+    {
+        var today = DateTime.Today;
+        var lastMonth = today.AddMonths(-1);
+        currentPeriodStart = new DateTime(lastMonth.Year, lastMonth.Month, 1);
+        currentPeriodEnd = currentPeriodStart.AddMonths(1).AddDays(-1);
+        await NotifyDateRangeChanged();
+    }
+
+    private bool CanNavigatePrevious()
+    {
+        // Allow going back up to 1 year
+        var oneYearAgo = DateTime.Today.AddYears(-1);
+        return currentPeriodStart > oneYearAgo;
+    }
+
+    private bool CanNavigateNext()
+    {
+        // Can't go beyond current period
+        var today = DateTime.Today;
+        return currentPeriodEnd < today;
+    }
+
+    private string GetViewButtonClass(ViewType viewType)
+    {
+        return currentViewType == viewType
+            ? "bg-white text-blue-700 shadow-lg transform scale-105 border-2 border-white/50"
+            : "text-white/80 hover:text-white hover:bg-white/20 hover:scale-102 transition-all duration-300";
+    }
+
+    private string GetCurrentPeriodDisplay()
+    {
+        if (currentViewType == ViewType.Weekly)
+        {
+            return $"Week of {currentPeriodStart:MMM dd}";
+        }
+        else
+        {
+            return currentPeriodStart.ToString("MMMM yyyy");
+        }
+    }
+
+    private string GetDateRangeDisplay()
+    {
+        return $"{currentPeriodStart:MMM dd} - {currentPeriodEnd:MMM dd}";
+    }
+
+    private async Task NotifyDateRangeChanged()
+    {
+        var args = new DateRangeChangedEventArgs
+        {
+            StartDate = currentPeriodStart,
+            EndDate = currentPeriodEnd,
+            ViewType = currentViewType
+        };
+        
+        await OnDateRangeChanged.InvokeAsync(args);
+    }
+
+    public class DateRangeChangedEventArgs
+    {
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public ViewType ViewType { get; set; }
+    }
+}

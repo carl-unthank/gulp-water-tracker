@@ -1,0 +1,206 @@
+@page "/login"
+@layout AuthLayout
+@inject NavigationManager Navigation
+@inject HttpClient Http
+@inject AuthenticationStateProvider AuthStateProvider
+@using System.Text.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components
+
+<PageTitle>Sign In - Gulp!</PageTitle>
+
+<div class="space-y-8">
+    <!-- Hero Section -->
+    <div class="text-center">
+        <h2 class="text-3xl font-black text-slate-800 mb-2">
+            Welcome Back!
+        </h2>
+        <p class="text-slate-600 text-lg">Sign in to continue your journey</p>
+        <div class="w-16 h-1 bg-gradient-to-r from-ocean-500 to-aqua-500 mx-auto mt-4 rounded-full"></div>
+    </div>
+
+    <EditForm Model="loginModel" OnValidSubmit="HandleLogin" class="space-y-6">
+        <DataAnnotationsValidator />
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="bg-coral-50 border-l-4 border-coral-400 text-coral-700 px-4 py-3 rounded-r-lg shadow-sm">
+                <div class="flex items-center">
+                    <span class="text-coral-500 mr-2">⚠️</span>
+                    @errorMessage
+                </div>
+            </div>
+        }
+
+        <div class="space-y-5">
+            <div class="group">
+                <label for="email" class="block text-sm font-semibold text-slate-700 mb-3">
+                    📧 Email Address
+                </label>
+                <InputText @bind-Value="loginModel.Email"
+                           id="email"
+                           type="email"
+                           class="w-full px-4 py-4 border-2 rounded-xl focus:ring-4 transition-all duration-300 bg-slate-50 group-hover:bg-white text-slate-800 placeholder-slate-400 valid:border-slate-200 valid:focus:ring-ocean-500/20 valid:focus:border-ocean-500 invalid:border-coral-500 invalid:focus:ring-coral-500/20 invalid:focus:border-coral-600"
+                           placeholder="your@email.com" />
+                <ValidationMessage For="@(() => loginModel.Email)" class="text-coral-500 text-sm mt-2 font-medium" />
+            </div>
+
+            <div class="group">
+                <label for="password" class="block text-sm font-semibold text-slate-700 mb-3">
+                    🔒 Password
+                </label>
+                <input @bind="loginModel.Password"
+                       id="password"
+                       type="password"
+                       class="w-full px-4 py-4 border-2 rounded-xl focus:ring-4 transition-all duration-300 bg-slate-50 group-hover:bg-white text-slate-800 placeholder-slate-400 valid:border-slate-200 valid:focus:ring-ocean-500/20 valid:focus:border-ocean-500 invalid:border-coral-500 invalid:focus:ring-coral-500/20 invalid:focus:border-coral-600"
+                       placeholder="Enter your password" />
+                <ValidationMessage For="@(() => loginModel.Password)" class="text-coral-500 text-sm mt-2 font-medium" />
+            </div>
+        </div>
+
+        <!-- CTA Button -->
+        <button type="submit"
+                disabled="@isLoading"
+                class="w-full bg-gradient-to-r from-ocean-600 to-aqua-600 text-white py-4 px-6 rounded-xl hover:from-ocean-700 hover:to-aqua-700 transform hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none font-bold text-lg shadow-xl hover:shadow-2xl">
+            @if (isLoading)
+            {
+                <div class="flex items-center justify-center space-x-3">
+                    <div class="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Signing In...</span>
+                </div>
+            }
+            else
+            {
+                <div class="flex items-center justify-center space-x-2">
+                    <span>Sign In</span>
+                    <span class="text-xl">🚀</span>
+                </div>
+            }
+        </button>
+    </EditForm>
+
+    <!-- Secondary CTA -->
+    <div class="text-center">
+        <p class="text-slate-600 text-base">
+            Don't have an account?
+            <a href="/register" class="text-ocean-600 hover:text-ocean-700 font-bold underline decoration-2 underline-offset-2 hover:decoration-ocean-300 transition-all">
+                Sign up here
+            </a>
+        </p>
+    </div>
+
+    <!-- Demo Credentials Card -->
+    <div class="bg-gradient-to-r from-mint-50 to-aqua-50 border-2 border-mint-200 rounded-xl p-5 shadow-lg">
+        <div class="flex items-center mb-3">
+            <span class="text-lg mr-2">🎯</span>
+            <h3 class="text-sm font-bold text-mint-800">Try Demo Account</h3>
+        </div>
+        <div class="text-sm text-slate-700 space-y-2 mb-4">
+            <div class="flex items-center">
+                <span class="font-semibold text-mint-700 w-16">Email:</span>
+                <span class="font-mono bg-white px-2 py-1 rounded text-xs">john.doe@example.com</span>
+            </div>
+            <div class="flex items-center">
+                <span class="font-semibold text-mint-700 w-16">Pass:</span>
+                <span class="font-mono bg-white px-2 py-1 rounded text-xs">TestUser123!</span>
+            </div>
+        </div>
+        <button @onclick="FillDemoCredentials"
+                class="w-full bg-mint-500 hover:bg-mint-600 text-white px-4 py-2 rounded-lg transition-all duration-200 font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-[1.02]">
+            🎮 Use Demo Credentials
+        </button>
+    </div>
+</div>
+
+@code {
+    private LoginDto loginModel = new();
+    private string errorMessage = "";
+    private bool isLoading = false;
+    private string? returnUrl;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Get return URL from query parameters
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = uri.Query;
+        if (!string.IsNullOrEmpty(query) && query.Contains("returnUrl="))
+        {
+            var startIndex = query.IndexOf("returnUrl=") + "returnUrl=".Length;
+            var endIndex = query.IndexOf('&', startIndex);
+            if (endIndex == -1) endIndex = query.Length;
+            returnUrl = Uri.UnescapeDataString(query.Substring(startIndex, endIndex - startIndex));
+        }
+
+        // Check if already authenticated
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            Navigation.NavigateTo(returnUrl ?? "/");
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        isLoading = true;
+        errorMessage = "";
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/sessions", loginModel);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var authResponse = await response.Content.ReadFromJsonAsync<AuthResponseDto>();
+
+                if (authResponse?.Success == true)
+                {
+                    // Notify the authentication state provider that the user has logged in
+                    if (AuthStateProvider is CustomAuthenticationStateProvider customProvider)
+                    {
+                        customProvider.NotifyUserAuthentication(loginModel.Email);
+                    }
+
+                    Navigation.NavigateTo(returnUrl ?? "/");
+                }
+                else
+                {
+                    errorMessage = authResponse?.Message ?? "Login failed. Please try again.";
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                try
+                {
+                    var errorResponse = System.Text.Json.JsonSerializer.Deserialize<JsonElement>(errorContent);
+                    errorMessage = errorResponse.TryGetProperty("message", out var messageElement)
+                        ? messageElement.GetString() ?? "Invalid email or password. Please try again."
+                        : "Invalid email or password. Please try again.";
+                }
+                catch
+                {
+                    errorMessage = "Invalid email or password. Please try again.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Login exception: {ex.Message}");
+            errorMessage = "An error occurred during sign in. Please try again.";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void FillDemoCredentials()
+    {
+        loginModel.Email = "john.doe@example.com";
+        loginModel.Password = "TestUser123!";
+        errorMessage = "";
+        StateHasChanged();
+    }
+}

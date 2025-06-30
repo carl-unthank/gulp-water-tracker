@@ -1,0 +1,156 @@
+<div class="tab-navigation">
+    <div class="tab-container">
+        @foreach (var tab in Tabs)
+        {
+            <button class="tab-button @(tab.IsActive ? "active" : "")" 
+                    @onclick="@(() => HandleTabClick(tab))"
+                    disabled="@tab.IsDisabled">
+                @if (!string.IsNullOrEmpty(tab.Icon))
+                {
+                    <i class="@tab.Icon"></i>
+                }
+                <span>@tab.Label</span>
+                @if (tab.Badge > 0)
+                {
+                    <span class="badge">@tab.Badge</span>
+                }
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<TabItem> Tabs { get; set; } = new();
+    [Parameter] public EventCallback<TabItem> OnTabChanged { get; set; }
+
+    private async Task HandleTabClick(TabItem tab)
+    {
+        if (tab.IsDisabled) return;
+
+        // Update active state
+        foreach (var t in Tabs)
+        {
+            t.IsActive = false;
+        }
+        tab.IsActive = true;
+
+        await OnTabChanged.InvokeAsync(tab);
+        StateHasChanged();
+    }
+
+    public class TabItem
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Label { get; set; } = string.Empty;
+        public string? Icon { get; set; }
+        public bool IsActive { get; set; }
+        public bool IsDisabled { get; set; }
+        public int Badge { get; set; }
+        public object? Data { get; set; }
+    }
+}
+
+<style>
+    .tab-navigation {
+        background: white;
+        border-bottom: 1px solid #e5e7eb;
+        margin-bottom: 1rem;
+    }
+
+    .tab-container {
+        display: flex;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 1rem;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .tab-container::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tab-button {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem 1.5rem;
+        border: none;
+        background: transparent;
+        color: #6b7280;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border-bottom: 2px solid transparent;
+        white-space: nowrap;
+        position: relative;
+    }
+
+    .tab-button:hover:not(:disabled) {
+        color: #374151;
+        background-color: #f9fafb;
+    }
+
+    .tab-button.active {
+        color: #3b82f6;
+        border-bottom-color: #3b82f6;
+        background-color: #eff6ff;
+    }
+
+    .tab-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .tab-button i {
+        font-size: 1rem;
+    }
+
+    .badge {
+        background-color: #ef4444;
+        color: white;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.125rem 0.375rem;
+        border-radius: 9999px;
+        min-width: 1.25rem;
+        height: 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+    }
+
+    .tab-button.active .badge {
+        background-color: #3b82f6;
+    }
+
+    @@media (max-width: 768px) {
+        .tab-container {
+            padding: 0 0.5rem;
+        }
+
+        .tab-button {
+            padding: 0.75rem 1rem;
+            font-size: 0.8rem;
+        }
+
+        .tab-button span {
+            display: none;
+        }
+
+        .tab-button i {
+            font-size: 1.25rem;
+        }
+    }
+
+    @@media (max-width: 480px) {
+        .tab-button {
+            padding: 0.75rem 0.75rem;
+            min-width: 60px;
+            justify-content: center;
+        }
+    }
+</style>

@@ -1,0 +1,51 @@
+@using Gulp.Client.Components.WaterIntake
+
+<div class="space-y-3">
+    @if (Intakes?.Any() == true)
+    {
+        @foreach (var intake in Intakes)
+        {
+            <WaterIntakeListItem WaterIntake="@intake"
+                               OnEdit="@HandleEdit"
+                               OnDelete="@HandleDelete" />
+        }
+    }
+    else
+    {
+        <div class="text-center py-8">
+            <div class="text-4xl mb-3">💧</div>
+            <h3 class="text-lg font-medium text-water-blue-900 mb-2">@EmptyMessage</h3>
+            <p class="text-water-blue-600 text-sm">@EmptySubMessage</p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public List<WaterIntakeDto>? Intakes { get; set; }
+    [Parameter] public bool ShowDate { get; set; } = false;
+    [Parameter] public bool ShowGoalProgress { get; set; } = false;
+    [Parameter] public bool AllowEdit { get; set; } = true;
+    [Parameter] public bool AllowQuickAdd { get; set; } = false;
+    [Parameter] public int? DailyGoal { get; set; }
+    [Parameter] public string EmptyMessage { get; set; } = "No water intakes yet";
+    [Parameter] public string EmptySubMessage { get; set; } = "Start tracking your water intake!";
+    [Parameter] public EventCallback<int> OnQuickAdd { get; set; }
+    [Parameter] public EventCallback<int> OnDelete { get; set; }
+    [Parameter] public EventCallback<WaterIntakeDto> OnEdit { get; set; }
+
+    private async Task HandleEdit(WaterIntakeDto intake)
+    {
+        if (OnEdit.HasDelegate)
+        {
+            await OnEdit.InvokeAsync(intake);
+        }
+    }
+
+    private async Task HandleDelete(WaterIntakeDto intake)
+    {
+        if (OnDelete.HasDelegate)
+        {
+            await OnDelete.InvokeAsync(intake.Id);
+        }
+    }
+}

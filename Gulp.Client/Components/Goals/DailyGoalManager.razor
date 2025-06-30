@@ -1,0 +1,251 @@
+@using Gulp.Shared.DTOs
+@using Gulp.Client.Services
+@inject IApiClient ApiClient
+@inject IStateService StateService
+@inject WaterIntakeNotificationService NotificationService
+@implements IDisposable
+
+<!-- Enhanced Goal Display - More Prominent and Mobile-Friendly -->
+<div class="mb-6">
+    @if (isLoading)
+    {
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-3xl p-8 shadow-lg border border-blue-200">
+            <div class="flex justify-center items-center space-x-3">
+                <div class="flex space-x-2">
+                    <div class="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
+                    <div class="w-3 h-3 bg-blue-500 rounded-full animate-bounce loading-dot-2"></div>
+                    <div class="w-3 h-3 bg-blue-500 rounded-full animate-bounce loading-dot-3"></div>
+                </div>
+                <span class="text-blue-700 font-medium">Loading your goal...</span>
+            </div>
+        </div>
+    }
+    else if (currentGoal != null)
+    {
+        <div class="bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 rounded-3xl p-6 shadow-xl border border-blue-300 relative overflow-hidden transform hover:scale-105 transition-all duration-300">
+            <!-- Consistent Background Pattern -->
+            <div class="absolute inset-0 opacity-10">
+                <svg class="w-full h-full" viewBox="0 0 100 100" fill="none">
+                    <defs>
+                        <pattern id="goal-grid" width="15" height="15" patternUnits="userSpaceOnUse">
+                            <circle cx="7.5" cy="7.5" r="1" fill="currentColor"/>
+                        </pattern>
+                    </defs>
+                    <rect width="100" height="100" fill="url(#goal-grid)" />
+                </svg>
+            </div>
+
+            <div class="relative z-10">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <!-- Goal Icon -->
+                        <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm shadow-lg">
+                            <span class="text-3xl">🎯</span>
+                        </div>
+
+                        <!-- Goal Info -->
+                        <div class="flex flex-col">
+                            <div class="text-white/80 text-sm font-medium mb-1">Daily Hydration Goal</div>
+                            <div class="text-white text-3xl font-bold">@currentGoal.TargetAmountMl ml</div>
+                            <div class="text-white/70 text-sm">@((currentGoal.TargetAmountMl / 1000.0).ToString("F1"))L per day</div>
+                        </div>
+                    </div>
+
+                    <!-- Edit Button -->
+                    <button @onclick="ShowSetGoalDialog"
+                            class="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-2xl p-4 text-white transition-all duration-300 hover:scale-110 shadow-lg">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="mt-6 flex flex-wrap gap-3">
+                    <button @onclick="() => QuickSetGoal(1500)"
+                            class="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-xl px-4 py-2 text-white text-sm font-medium transition-all duration-200 hover:scale-105">
+                        1.5L
+                    </button>
+                    <button @onclick="() => QuickSetGoal(2000)"
+                            class="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-xl px-4 py-2 text-white text-sm font-medium transition-all duration-200 hover:scale-105">
+                        2L
+                    </button>
+                    <button @onclick="() => QuickSetGoal(2500)"
+                            class="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-xl px-4 py-2 text-white text-sm font-medium transition-all duration-200 hover:scale-105">
+                        2.5L
+                    </button>
+                    <button @onclick="() => QuickSetGoal(3000)"
+                            class="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-xl px-4 py-2 text-white text-sm font-medium transition-all duration-200 hover:scale-105">
+                        3L
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="bg-gradient-to-br from-orange-400 via-orange-500 to-red-500 rounded-3xl p-8 shadow-xl border border-orange-300 relative overflow-hidden animate-pulse">
+            <!-- Consistent Background Pattern -->
+            <div class="absolute inset-0 opacity-10">
+                <svg class="w-full h-full" viewBox="0 0 100 100" fill="none">
+                    <defs>
+                        <pattern id="setup-grid" width="15" height="15" patternUnits="userSpaceOnUse">
+                            <circle cx="7.5" cy="7.5" r="1" fill="currentColor"/>
+                        </pattern>
+                    </defs>
+                    <rect width="100" height="100" fill="url(#setup-grid)" />
+                </svg>
+            </div>
+
+            <div class="relative z-10 text-center">
+                <div class="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-6 backdrop-blur-sm shadow-lg">
+                    <span class="text-4xl">💧</span>
+                </div>
+
+                <h3 class="text-white text-2xl font-bold mb-2">Set Your Daily Goal!</h3>
+                <p class="text-white/80 text-lg mb-6">Choose your hydration target to get started</p>
+
+                <!-- Quick Goal Options -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <button @onclick="() => QuickSetGoal(1500)"
+                            class="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-2xl p-4 text-white transition-all duration-300 hover:scale-105 shadow-lg">
+                        <div class="text-2xl font-bold">1.5L</div>
+                        <div class="text-sm opacity-80">Light Activity</div>
+                    </button>
+                    <button @onclick="() => QuickSetGoal(2000)"
+                            class="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-2xl p-4 text-white transition-all duration-300 hover:scale-105 shadow-lg">
+                        <div class="text-2xl font-bold">2L</div>
+                        <div class="text-sm opacity-80">Recommended</div>
+                    </button>
+                    <button @onclick="() => QuickSetGoal(2500)"
+                            class="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-2xl p-4 text-white transition-all duration-300 hover:scale-105 shadow-lg">
+                        <div class="text-2xl font-bold">2.5L</div>
+                        <div class="text-sm opacity-80">Active Lifestyle</div>
+                    </button>
+                    <button @onclick="() => QuickSetGoal(3000)"
+                            class="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-2xl p-4 text-white transition-all duration-300 hover:scale-105 shadow-lg">
+                        <div class="text-2xl font-bold">3L</div>
+                        <div class="text-sm opacity-80">High Activity</div>
+                    </button>
+                </div>
+
+                <button @onclick="ShowSetGoalDialog"
+                        class="bg-white text-orange-500 border-none rounded-2xl px-8 py-4 font-bold text-lg cursor-pointer transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95">
+                    Custom Goal
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public EventCallback<DailyGoalDto> OnGoalUpdated { get; set; }
+
+    private DailyGoalDto? currentGoal;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to goal updates
+        NotificationService.GoalUpdated += OnGoalUpdatedNotification;
+        StateService.State.OnGoalChanged += OnGoalChanged;
+
+        await LoadCurrentGoal();
+    }
+
+    private async Task LoadCurrentGoal()
+    {
+        try
+        {
+            isLoading = true;
+            // Use StateService to get current goal (it may already be loaded)
+            if (StateService.State.CurrentGoal != null)
+            {
+                currentGoal = StateService.State.CurrentGoal;
+            }
+            else
+            {
+                await StateService.LoadCurrentGoalAsync();
+                currentGoal = StateService.State.CurrentGoal;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading current goal: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async void OnGoalUpdatedNotification()
+    {
+        await InvokeAsync(async () =>
+        {
+            await LoadCurrentGoal();
+            StateHasChanged();
+        });
+    }
+
+    private void OnGoalChanged(DailyGoalDto? goal)
+    {
+        currentGoal = goal;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ShowSetGoalDialog()
+    {
+        NotificationService.RequestShowSetGoalModal();
+    }
+
+    private async Task QuickSetGoal(int targetAmountMl)
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            var goalDto = new DailyGoalDto
+            {
+                TargetAmountMl = targetAmountMl
+            };
+
+            var updatedGoal = await StateService.UpdateGoalAsync(goalDto);
+            if (updatedGoal != null)
+            {
+                await HandleGoalUpdated(updatedGoal);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error setting quick goal: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleGoalUpdated(DailyGoalDto updatedGoal)
+    {
+        currentGoal = updatedGoal;
+        await OnGoalUpdated.InvokeAsync(updatedGoal);
+
+        // Notify other components about the goal change
+        NotificationService.NotifyGoalUpdated();
+
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NotificationService.GoalUpdated -= OnGoalUpdatedNotification;
+        StateService.State.OnGoalChanged -= OnGoalChanged;
+    }
+
+}
+
+

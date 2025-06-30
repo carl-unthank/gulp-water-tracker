@@ -1,0 +1,86 @@
+@using System.Security.Claims
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<div class="bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 text-white p-6 rounded-2xl mb-6 shadow-lg">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold mb-1">@GetGreeting()</h1>
+            <p class="text-blue-100 text-lg">@GetUserName()</p>
+        </div>
+        
+        <!-- Weather/Time Info (Optional) -->
+        <div class="text-right">
+            <div class="text-blue-100 text-sm">@DateTime.Now.ToString("dddd")</div>
+            <div class="text-white font-semibold">@DateTime.Now.ToString("MMM dd")</div>
+        </div>
+    </div>
+    
+    <!-- Quick Stats Row -->
+    <div class="mt-4 flex items-center space-x-6">
+        <div class="flex items-center space-x-2">
+            <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+            </div>
+            <div>
+                <div class="text-xs text-blue-100">Today's Goal</div>
+                <div class="text-sm font-semibold">@TodaysGoal ml</div>
+            </div>
+        </div>
+        
+        <div class="flex items-center space-x-2">
+            <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+            </div>
+            <div>
+                <div class="text-xs text-blue-100">Progress</div>
+                <div class="text-sm font-semibold">@GetProgressPercentage()%</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int TodaysGoal { get; set; } = 2000;
+    [Parameter] public int TodaysIntake { get; set; } = 0;
+    
+    private string userName = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            userName = authState.User.FindFirst(ClaimTypes.Name)?.Value ?? 
+                      authState.User.FindFirst("name")?.Value ?? 
+                      authState.User.Identity.Name ?? 
+                      "Friend";
+        }
+    }
+
+    private string GetGreeting()
+    {
+        var hour = DateTime.Now.Hour;
+        return hour switch
+        {
+            >= 5 and < 12 => "Good Morning",
+            >= 12 and < 17 => "Good Afternoon",
+            >= 17 and < 22 => "Good Evening",
+            _ => "Good Night"
+        };
+    }
+
+    private string GetUserName()
+    {
+        return string.IsNullOrEmpty(userName) ? "Friend" : userName;
+    }
+
+    private int GetProgressPercentage()
+    {
+        if (TodaysGoal <= 0) return 0;
+        return Math.Min(100, (int)Math.Round((double)TodaysIntake / TodaysGoal * 100));
+    }
+}

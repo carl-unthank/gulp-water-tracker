@@ -1,0 +1,211 @@
+@using Gulp.Shared.DTOs
+
+<div class="water-intake-list-view">
+    @if (IsLoading)
+    {
+        <div class="loading-container">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Loading water intakes...</p>
+        </div>
+    }
+    else if (WaterIntakes?.Any() == true)
+    {
+        <div class="intake-list">
+            @foreach (var intake in WaterIntakes)
+            {
+                <WaterIntakeListItem 
+                    WaterIntake="@intake" 
+                    OnEdit="@HandleEdit"
+                    OnDelete="@HandleDelete" />
+            }
+        </div>
+        
+        @if (ShowLoadMore && OnLoadMore.HasDelegate)
+        {
+            <div class="load-more-container">
+                <Button Variant="ButtonVariant.OutlinePrimary"
+                        OnClick="@(() => OnLoadMore.InvokeAsync())"
+                        IsLoading="@IsLoadingMore"
+                        IsDisabled="@IsLoadingMore">
+                    Load More
+                </Button>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="fas fa-tint"></i>
+            </div>
+            <h4>@EmptyTitle</h4>
+            <p class="text-muted">@EmptyMessage</p>
+            @if (ShowAddButton && OnAdd.HasDelegate)
+            {
+                <Button Variant="ButtonVariant.Primary"
+                        Icon="fas fa-plus"
+                        OnClick="@(() => OnAdd.InvokeAsync())">
+                    Add Water Intake
+                </Button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IEnumerable<WaterIntakeDto>? WaterIntakes { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool IsLoadingMore { get; set; }
+    [Parameter] public bool ShowLoadMore { get; set; }
+    [Parameter] public bool ShowAddButton { get; set; } = true;
+    [Parameter] public string EmptyTitle { get; set; } = "No Water Intakes";
+    [Parameter] public string EmptyMessage { get; set; } = "Start tracking your hydration by adding your first water intake.";
+    
+    [Parameter] public EventCallback<WaterIntakeDto> OnEdit { get; set; }
+    [Parameter] public EventCallback<WaterIntakeDto> OnDelete { get; set; }
+    [Parameter] public EventCallback OnAdd { get; set; }
+    [Parameter] public EventCallback OnLoadMore { get; set; }
+
+    private async Task HandleEdit(WaterIntakeDto intake)
+    {
+        await OnEdit.InvokeAsync(intake);
+    }
+
+    private async Task HandleDelete(WaterIntakeDto intake)
+    {
+        await OnDelete.InvokeAsync(intake);
+    }
+}
+
+<style>
+    .water-intake-list-view {
+        width: 100%;
+    }
+
+    .loading-container {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #6b7280;
+    }
+
+    .loading-container .spinner-border {
+        margin-bottom: 1rem;
+    }
+
+    .intake-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .load-more-container {
+        text-align: center;
+        margin-top: 2rem;
+        padding: 1rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+    }
+
+    .empty-icon {
+        font-size: 3rem;
+        color: #d1d5db;
+        margin-bottom: 1rem;
+    }
+
+    .empty-state h4 {
+        color: #374151;
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-state p {
+        margin-bottom: 1.5rem;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .btn {
+        padding: 0.75rem 1rem;
+        border: none;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-primary {
+        background-color: #3b82f6;
+        color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background-color: #2563eb;
+    }
+
+    .btn-outline-primary {
+        background-color: transparent;
+        color: #3b82f6;
+        border: 1px solid #3b82f6;
+    }
+
+    .btn-outline-primary:hover:not(:disabled) {
+        background-color: #3b82f6;
+        color: white;
+    }
+
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .spinner-border {
+        width: 1.5rem;
+        height: 1.5rem;
+        border: 0.125rem solid currentColor;
+        border-right-color: transparent;
+        border-radius: 50%;
+        animation: spinner-border 0.75s linear infinite;
+    }
+
+    .spinner-border-sm {
+        width: 1rem;
+        height: 1rem;
+        border-width: 0.125rem;
+    }
+
+    .me-2 {
+        margin-right: 0.5rem;
+    }
+
+    .text-muted {
+        color: #6b7280;
+    }
+
+    .visually-hidden {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        padding: 0 !important;
+        margin: -1px !important;
+        overflow: hidden !important;
+        clip: rect(0, 0, 0, 0) !important;
+        white-space: nowrap !important;
+        border: 0 !important;
+    }
+
+    @@keyframes spinner-border {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+</style>

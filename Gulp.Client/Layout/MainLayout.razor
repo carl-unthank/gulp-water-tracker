@@ -1,0 +1,292 @@
+﻿@using Gulp.Client.Components.Navigation
+@using Gulp.Client.Components.Modals
+@using Gulp.Client.Components.UI
+@using Gulp.Client.Components
+@using Gulp.Client.Components.Layout
+@using Gulp.Client.Services
+@using Gulp.Shared.DTOs
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authorization
+@using System
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject WaterIntakeNotificationService NotificationService
+@inject IApiClient ApiClient
+@inject IStateService StateService
+@inject ActionMenuService ActionMenuService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="min-h-screen bg-gradient-to-br from-water-blue-50 to-aqua-50">
+
+    <!-- Main Content -->
+    <main class="flex-1">
+        @if (isInitialized)
+        {
+            <AuthorizeView>
+                <Authorized>
+                    <!-- Full-width App Header with Integrated Navigation -->
+                    @if (StateService?.State != null)
+                    {
+                        <AppHeader TodaysGoal="@(StateService.State.CurrentGoal?.TargetAmountMl ?? 2000)"
+                                   TodaysIntake="@StateService.State.TotalTodayAmount"
+                                   ShowAddButton="true"
+                                   OnAddWater="ShowAddWaterModal" />
+                    }
+                    else
+                    {
+                        <div class="bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 text-white p-6 shadow-2xl relative overflow-hidden">
+                            <!-- Consistent Background Pattern -->
+                            <div class="absolute inset-0 opacity-10">
+                                <svg class="w-full h-full" viewBox="0 0 100 100" fill="none">
+                                    <defs>
+                                        <pattern id="loading-grid" width="15" height="15" patternUnits="userSpaceOnUse">
+                                            <circle cx="7.5" cy="7.5" r="1" fill="currentColor"/>
+                                        </pattern>
+                                    </defs>
+                                    <rect width="100" height="100" fill="url(#loading-grid)" />
+                                </svg>
+                            </div>
+                            <div class="relative z-10 max-w-4xl mx-auto">
+                                <h1 class="text-2xl font-bold">Loading...</h1>
+                                <p class="text-blue-100">Initializing your hydration tracker</p>
+                            </div>
+                        </div>
+                    }
+                </Authorized>
+            </AuthorizeView>
+
+            <!-- Page Content -->
+            <div class="max-w-4xl mx-auto px-4 pb-24 pt-6">
+                <div class="space-y-8">
+                    @Body
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- Modern Loading State -->
+            <div class="flex items-center justify-center min-h-screen">
+                <div class="text-center">
+                    <div class="relative mb-8">
+                        <div class="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-full animate-pulse shadow-xl"></div>
+                        <div class="absolute inset-0 w-20 h-20 mx-auto bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full animate-ping opacity-20"></div>
+                        <div class="absolute inset-2 w-16 h-16 mx-auto bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                            <span class="text-2xl">💧</span>
+                        </div>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Gulp!</h2>
+                    <p class="text-gray-600 text-lg mb-6">Initializing your hydration tracker...</p>
+                    <LoadingIndicator Size="medium" ContainerClass="" />
+                </div>
+            </div>
+        }
+    </main>
+
+    <!-- Mobile Bottom Navigation -->
+    <AuthorizeView>
+        <Authorized>
+            <BottomNavigation OnAddWater="ShowAddWaterModal" />
+        </Authorized>
+    </AuthorizeView>
+
+    <!-- Add Water Modal -->
+    <AddWaterModal IsVisible="showAddWaterModal"
+                   OnClose="HideAddWaterModal"
+                   OnAddWater="HandleAddWater"
+                   OnUpdateWater="HandleUpdateWater"
+                   ExistingIntake="editingIntake"
+                   QuickAmounts="quickAmounts" />
+
+    <!-- Set Goal Modal -->
+    <SetGoalModal IsVisible="showSetGoalModal"
+                  OnClose="HideSetGoalModal"
+                  OnSetGoal="HandleSetGoal" />
+</div>
+
+@code {
+    private bool showAddWaterModal = false;
+    private bool showSetGoalModal = false;
+    private bool isInitialized = false;
+    private WaterIntakeDto? editingIntake = null;
+    private List<QuickAmountDto> quickAmounts = new()
+    {
+        new() { AmountMl = 200, Label = "Glass", Icon = "🥛" },
+        new() { AmountMl = 250, Label = "Cup", Icon = "☕" },
+        new() { AmountMl = 500, Label = "Bottle", Icon = "🍼" },
+        new() { AmountMl = 750, Label = "Large", Icon = "🧴" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Subscribe to modal requests
+            NotificationService.ShowAddWaterModal += ShowAddWaterModal;
+            NotificationService.ShowSetGoalModal += ShowSetGoalModal;
+            ActionMenuService.EditRequested += OnEditRequested;
+
+            // Subscribe to state changes
+            StateService.State.OnChange += StateHasChanged;
+            StateService.State.OnGoalChanged += OnGoalChanged;
+            StateService.State.OnIntakesChanged += OnIntakesChanged;
+
+            // Initialize state service properly
+            try
+            {
+                await StateService.InitializeUserAsync();
+                await StateService.LoadCurrentGoalAsync();
+                await StateService.LoadTodayIntakesAsync();
+            }
+            catch (Exception stateEx)
+            {
+                Console.WriteLine($"StateService initialization failed: {stateEx.Message}");
+                // Continue anyway - the UI will handle null states
+            }
+
+            isInitialized = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error initializing MainLayout: {ex.Message}");
+            isInitialized = true; // Still show the UI even if initialization fails
+            StateHasChanged();
+        }
+    }
+
+    private void ShowAddWaterModal()
+    {
+        ActionMenuService.CloseAllMenus();
+        showAddWaterModal = true;
+        StateHasChanged();
+    }
+
+    private void HideAddWaterModal()
+    {
+        showAddWaterModal = false;
+        editingIntake = null;
+        StateHasChanged();
+    }
+
+    private void ShowSetGoalModal()
+    {
+        ActionMenuService.CloseAllMenus();
+        showSetGoalModal = true;
+        StateHasChanged();
+    }
+
+    private void HideSetGoalModal()
+    {
+        showSetGoalModal = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleAddWater(CreateWaterIntakeDto createDto)
+    {
+        try
+        {
+            // Add the water intake via StateService (which handles API call and state update)
+            var addedIntake = await StateService.AddIntakeAsync(createDto);
+
+            if (addedIntake != null)
+            {
+                // Notify other components that water was added
+                NotificationService.NotifyWaterIntakeAdded(createDto);
+                NotificationService.NotifyWaterIntakeUpdated();
+
+                HideAddWaterModal();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error adding water intake: {ex.Message}");
+            // Keep modal open on error
+        }
+    }
+
+    private async Task HandleUpdateWater(UpdateWaterIntakeDto updateDto)
+    {
+        try
+        {
+            if (editingIntake != null)
+            {
+                // Update the water intake via StateService (which handles API call and state update)
+                var updatedIntake = await StateService.UpdateIntakeAsync(editingIntake.Id, updateDto);
+
+                if (updatedIntake != null)
+                {
+                    // Notify other components that water was updated
+                    NotificationService.NotifyWaterIntakeUpdated();
+
+                    HideAddWaterModal();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating water intake: {ex.Message}");
+            // Keep modal open on error
+        }
+    }
+
+    public void ShowEditWaterModal(WaterIntakeDto intake)
+    {
+        ActionMenuService.CloseAllMenus();
+        editingIntake = intake;
+        showAddWaterModal = true;
+        StateHasChanged();
+    }
+
+    private void OnEditRequested(WaterIntakeDto intake)
+    {
+        ShowEditWaterModal(intake);
+    }
+
+    private async Task HandleSetGoal(DailyGoalDto goalDto)
+    {
+        try
+        {
+            // Update the daily goal via StateService (which handles API call and state update)
+            var updatedGoal = await StateService.UpdateGoalAsync(goalDto);
+
+            if (updatedGoal != null)
+            {
+                // Notify other components that goal was updated
+                NotificationService.NotifyGoalUpdated();
+
+                HideSetGoalModal();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error setting goal: {ex.Message}");
+            // Keep modal open on error
+        }
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe from modal requests
+        NotificationService.ShowAddWaterModal -= ShowAddWaterModal;
+        NotificationService.ShowSetGoalModal -= ShowSetGoalModal;
+        ActionMenuService.EditRequested -= OnEditRequested;
+
+        // Unsubscribe from state changes
+        if (StateService?.State != null)
+        {
+            StateService.State.OnChange -= StateHasChanged;
+            StateService.State.OnGoalChanged -= OnGoalChanged;
+            StateService.State.OnIntakesChanged -= OnIntakesChanged;
+        }
+    }
+
+    private void OnGoalChanged(DailyGoalDto? goal)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnIntakesChanged(List<WaterIntakeDto> intakes)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+}

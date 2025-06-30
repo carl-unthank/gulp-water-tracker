@@ -1,0 +1,6 @@
+@Gulp.Api_HostAddress = http://localhost:5044
+
+GET {{Gulp.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

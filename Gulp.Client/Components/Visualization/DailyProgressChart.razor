@@ -1,0 +1,188 @@
+@using Gulp.Shared.DTOs
+
+<!-- Modernized Progress Card with Consistent Aesthetic -->
+<div class="bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 text-white rounded-3xl p-8 shadow-2xl border border-blue-300 relative overflow-hidden">
+    <!-- Consistent Background Pattern -->
+    <div class="absolute inset-0 opacity-10">
+        <svg class="w-full h-full" viewBox="0 0 100 100" fill="none">
+            <defs>
+                <pattern id="progress-grid" width="15" height="15" patternUnits="userSpaceOnUse">
+                    <circle cx="7.5" cy="7.5" r="1" fill="currentColor"/>
+                </pattern>
+            </defs>
+            <rect width="100" height="100" fill="url(#progress-grid)" />
+        </svg>
+    </div>
+
+    <div class="relative z-10">
+        <!-- Enhanced Progress Stats Header -->
+        <div class="text-center mb-8">
+            <div class="flex items-center justify-center space-x-4 mb-6">
+                <div class="w-16 h-16 bg-white/20 rounded-3xl flex items-center justify-center backdrop-blur-sm shadow-lg">
+                    <span class="text-3xl">💧</span>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold mb-1">Today's Progress</h3>
+                    <p class="text-blue-100">Stay hydrated, stay healthy</p>
+                </div>
+            </div>
+
+            <div class="flex flex-col items-center gap-3">
+                <div class="flex items-baseline gap-2">
+                    <span class="text-5xl font-bold">@CurrentAmount</span>
+                    <span class="text-xl font-medium text-blue-200">ml</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="text-blue-100">of @TargetAmount ml goal</span>
+                    <div class="bg-white/20 backdrop-blur-sm border border-white/30 px-4 py-2 rounded-2xl">
+                        <span class="text-lg font-bold">@GetPercentage()%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Progress Ring -->
+        <div class="mb-8">
+            <div class="relative w-48 h-48 mx-auto">
+                <svg viewBox="0 0 160 160" class="w-full h-full">
+                    <!-- Background ring -->
+                    <circle cx="80" cy="80" r="70"
+                            fill="none"
+                            stroke="rgba(255, 255, 255, 0.2)"
+                            stroke-width="8"/>
+                    <!-- Progress ring -->
+                    <circle cx="80" cy="80" r="70"
+                            fill="none"
+                            stroke="rgba(255, 255, 255, 0.9)"
+                            stroke-width="8"
+                            stroke-linecap="round"
+                            stroke-dasharray="@GetCircumference()"
+                            stroke-dashoffset="@GetDashOffset()"
+                            transform="rotate(-90 80 80)"
+                            class="transition-all duration-1000 ease-out drop-shadow-lg"/>
+                </svg>
+                <!-- Center content -->
+                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                    <div class="w-16 h-16 bg-white/20 rounded-3xl flex items-center justify-center backdrop-blur-sm shadow-lg mb-2">
+                        <span class="text-3xl">💧</span>
+                    </div>
+                    <div class="text-2xl font-bold">@IntakeCount</div>
+                    <div class="text-sm text-blue-200 font-medium">drinks today</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Quick Stats -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="bg-white/20 rounded-2xl p-4 backdrop-blur-sm border border-white/30 text-center">
+                <div class="text-2xl font-bold mb-1">@GetRemainingAmount()</div>
+                <div class="text-sm text-blue-200 font-medium">ml remaining</div>
+            </div>
+            <div class="bg-white/20 rounded-2xl p-4 backdrop-blur-sm border border-white/30 text-center">
+                <div class="text-2xl font-bold mb-1">@GetAverageIntake()</div>
+                <div class="text-sm text-blue-200 font-medium">ml per drink</div>
+            </div>
+        </div>
+
+        @if (ShowGoalReached && IsGoalReached())
+        {
+            <div class="bg-white/20 rounded-2xl p-6 backdrop-blur-sm border border-white/30 text-center animate-pulse">
+                <div class="w-16 h-16 bg-gradient-to-br from-green-400 to-green-500 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg animate-bounce">
+                    <span class="text-3xl">🏆</span>
+                </div>
+                <div class="text-xl font-bold mb-2">Goal Achieved!</div>
+                <div class="text-blue-200">Excellent hydration today! 🎉</div>
+            </div>
+        }
+        else
+        {
+            <div class="text-center">
+                <div class="text-xl font-bold mb-2">@GetMotivationalMessage()</div>
+                <div class="text-blue-200">@GetProgressDescription()</div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public int CurrentAmount { get; set; }
+    [Parameter] public int TargetAmount { get; set; } = 2000;
+    [Parameter] public int IntakeCount { get; set; }
+    [Parameter] public bool ShowGoalReached { get; set; } = true;
+
+    private double GetPercentage()
+    {
+        if (TargetAmount <= 0) return 0;
+        return Math.Min(100, Math.Round((double)CurrentAmount / TargetAmount * 100));
+    }
+
+    private bool IsGoalReached()
+    {
+        return CurrentAmount >= TargetAmount;
+    }
+
+    private int GetRemainingAmount()
+    {
+        return Math.Max(0, TargetAmount - CurrentAmount);
+    }
+
+    private string GetGradientStart()
+    {
+        var percentage = GetPercentage();
+        return percentage switch
+        {
+            >= 100 => "#10b981", // Green
+            >= 75 => "#3b82f6",  // Blue
+            >= 50 => "#f59e0b",  // Yellow
+            >= 25 => "#f97316",  // Orange
+            _ => "#ef4444"       // Red
+        };
+    }
+
+    private string GetGradientEnd()
+    {
+        var percentage = GetPercentage();
+        return percentage switch
+        {
+            >= 100 => "#059669", // Darker Green
+            >= 75 => "#2563eb",  // Darker Blue
+            >= 50 => "#d97706",  // Darker Yellow
+            >= 25 => "#ea580c",  // Darker Orange
+            _ => "#dc2626"       // Darker Red
+        };
+    }
+
+    private double GetCircumference()
+    {
+        return 2 * Math.PI * 70; // radius = 70
+    }
+
+    private int GetAverageIntake()
+    {
+        return IntakeCount > 0 ? CurrentAmount / IntakeCount : 0;
+    }
+
+    private double GetDashOffset()
+    {
+        var circumference = GetCircumference();
+        var percentage = GetPercentage() / 100.0;
+        return circumference * (1 - percentage);
+    }
+
+    private string GetMotivationalMessage()
+    {
+        var percentage = GetPercentage();
+        if (percentage >= 100) return "Excellent hydration! 🎉";
+        if (percentage >= 75) return "Almost there! 💪";
+        if (percentage >= 50) return "Great progress! 🌟";
+        if (percentage >= 25) return "Keep it up! 💧";
+        return "Let's start hydrating! 🚀";
+    }
+
+    private string GetProgressDescription()
+    {
+        var remaining = GetRemainingAmount();
+        if (remaining <= 0) return "Goal achieved for today!";
+        return $"Just {remaining} ml to reach your goal";
+    }
+}

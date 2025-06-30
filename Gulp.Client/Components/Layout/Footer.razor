@@ -1,0 +1,39 @@
+<footer class="bg-gray-800 text-gray-300 mt-auto">
+    <div class="max-w-6xl mx-auto px-4 py-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div>
+            <div class="flex items-center gap-2 text-white mb-4 text-xl font-bold">
+                <i class="fas fa-tint text-blue-400"></i>
+                <span>Gulp</span>
+            </div>
+            <p class="text-gray-400 leading-relaxed">
+                Track your daily water intake and stay hydrated.
+            </p>
+        </div>
+
+        <div>
+            <h4 class="text-white mb-4 text-base font-semibold">Quick Links</h4>
+            <ul class="space-y-2">
+                <li><a href="/" class="text-gray-300 hover:text-white transition-colors duration-200">Today</a></li>
+                <li><a href="/history" class="text-gray-300 hover:text-white transition-colors duration-200">History</a></li>
+            </ul>
+        </div>
+
+        <div>
+            <h4 class="text-white mb-4 text-base font-semibold">Support</h4>
+            <ul class="space-y-2">
+                <li><a href="#" @onclick:preventDefault="true" class="text-gray-300 hover:text-white transition-colors duration-200">Help</a></li>
+                <li><a href="#" @onclick:preventDefault="true" class="text-gray-300 hover:text-white transition-colors duration-200">Privacy</a></li>
+                <li><a href="#" @onclick:preventDefault="true" class="text-gray-300 hover:text-white transition-colors duration-200">Terms</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="border-t border-gray-700">
+        <div class="max-w-6xl mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center text-sm text-gray-400">
+            <p>&copy; @DateTime.Now.Year Gulp. All rights reserved.</p>
+            <p>Version 1.0.0</p>
+        </div>
+    </div>
+</footer>
+
+

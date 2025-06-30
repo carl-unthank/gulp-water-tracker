@@ -1,0 +1,218 @@
+@if (IsVisible)
+{
+    <div class="modal-overlay @(IsVisible ? "show" : "")" @onclick="@HandleOverlayClick">
+        <div class="modal-dialog @GetSizeClass()" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                @if (ShowHeader)
+                {
+                    <div class="modal-header">
+                        <h5 class="modal-title">@Title</h5>
+                        @if (ShowCloseButton)
+                        {
+                            <button type="button" class="close-button" @onclick="@Close">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        }
+                    </div>
+                }
+                
+                <div class="modal-body">
+                    @ChildContent
+                </div>
+                
+                @if (FooterContent != null)
+                {
+                    <div class="modal-footer">
+                        @FooterContent
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public ModalSize Size { get; set; } = ModalSize.Medium;
+    [Parameter] public bool ShowHeader { get; set; } = true;
+    [Parameter] public bool ShowCloseButton { get; set; } = true;
+    [Parameter] public bool CloseOnOverlayClick { get; set; } = true;
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? FooterContent { get; set; }
+
+    private string GetSizeClass()
+    {
+        return Size switch
+        {
+            ModalSize.Small => "modal-sm",
+            ModalSize.Large => "modal-lg",
+            ModalSize.ExtraLarge => "modal-xl",
+            _ => ""
+        };
+    }
+
+    private async Task HandleOverlayClick()
+    {
+        if (CloseOnOverlayClick)
+        {
+            await Close();
+        }
+    }
+
+    private async Task Close()
+    {
+        IsVisible = false;
+        await OnClose.InvokeAsync();
+        StateHasChanged();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (IsVisible)
+        {
+            // Prevent body scroll when modal is open
+            // This would typically be done via JS interop
+        }
+    }
+}
+
+<style>
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1050;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.15s ease-out, visibility 0.15s ease-out;
+        padding: 1rem;
+    }
+
+    .modal-overlay.show {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .modal-dialog {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        width: 100%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow: hidden;
+        transform: scale(0.95);
+        transition: transform 0.15s ease-out;
+    }
+
+    .modal-overlay.show .modal-dialog {
+        transform: scale(1);
+    }
+
+    .modal-dialog.modal-sm {
+        max-width: 300px;
+    }
+
+    .modal-dialog.modal-lg {
+        max-width: 800px;
+    }
+
+    .modal-dialog.modal-xl {
+        max-width: 1140px;
+    }
+
+    .modal-content {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.5rem 1.5rem 0;
+        border-bottom: 1px solid #e5e7eb;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+    }
+
+    .modal-title {
+        margin: 0;
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .close-button {
+        background: none;
+        border: none;
+        color: #6b7280;
+        cursor: pointer;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+    }
+
+    .close-button:hover {
+        color: #374151;
+        background-color: #f3f4f6;
+    }
+
+    .modal-body {
+        padding: 0 1.5rem;
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .modal-footer {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        padding: 1.5rem;
+        border-top: 1px solid #e5e7eb;
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+    }
+
+    @@media (max-width: 576px) {
+        .modal-overlay {
+            padding: 0.5rem;
+        }
+
+        .modal-dialog {
+            max-width: none;
+            margin: 0;
+        }
+
+        .modal-header,
+        .modal-body,
+        .modal-footer {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        .modal-footer {
+            flex-direction: column-reverse;
+            align-items: stretch;
+        }
+
+        .modal-footer > * {
+            width: 100%;
+        }
+    }
+</style>

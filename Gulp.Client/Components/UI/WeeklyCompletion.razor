@@ -1,0 +1,214 @@
+@using Gulp.Shared.DTOs
+
+<div class="bg-gradient-to-br from-white to-blue-50 rounded-3xl p-8 shadow-lg border border-blue-100 relative overflow-hidden">
+    <!-- Consistent Background Pattern -->
+    <div class="absolute inset-0 opacity-10">
+        <svg class="w-full h-full" viewBox="0 0 100 100" fill="none">
+            <defs>
+                <pattern id="weekly-grid" width="15" height="15" patternUnits="userSpaceOnUse">
+                    <circle cx="7.5" cy="7.5" r="1" fill="currentColor"/>
+                </pattern>
+            </defs>
+            <rect width="100" height="100" fill="url(#weekly-grid)" />
+        </svg>
+    </div>
+
+    <div class="relative z-10">
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <span class="text-2xl">📅</span>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-gray-900">Weekly Progress</h3>
+                    <p class="text-sm text-blue-600">Your hydration journey</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <div class="text-2xl font-bold text-blue-600">@CompletedDays/@TotalDays</div>
+                <div class="text-sm text-gray-500">days completed</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-7 gap-1 sm:gap-3 mb-8">
+            @foreach (var day in WeekDays)
+            {
+                <div class="text-center group">
+                    <div class="text-xs font-semibold text-gray-600 mb-2 sm:mb-3 uppercase tracking-wide">@day.DayAbbr</div>
+                    <div class="relative">
+                        <div class="w-10 h-10 sm:w-14 sm:h-14 mx-auto rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-300 transform group-hover:scale-110 @GetDayStatusClass(day)">
+                            @if (day.IsCompleted)
+                            {
+                                <div class="relative">
+                                    <span class="text-lg sm:text-2xl">💧</span>
+                                    <div class="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 w-4 h-4 sm:w-5 sm:h-5 bg-green-500 rounded-full flex items-center justify-center">
+                                        <svg class="w-2 h-2 sm:w-3 sm:h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            }
+                            else if (day.IsToday)
+                            {
+                                <div class="relative animate-pulse">
+                                    <span class="text-lg sm:text-2xl">💧</span>
+                                    <div class="absolute inset-0 bg-blue-400 rounded-xl sm:rounded-2xl opacity-30 animate-ping"></div>
+                                </div>
+                            }
+                            else if (day.IsFuture)
+                            {
+                                <span class="text-lg sm:text-2xl opacity-30">💧</span>
+                            }
+                            else
+                            {
+                                <div class="relative">
+                                    <span class="text-lg sm:text-2xl opacity-50">💧</span>
+                                    <div class="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-400 rounded-full flex items-center justify-center">
+                                        <svg class="w-2 h-2 sm:w-3 sm:h-3 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <div class="text-sm font-medium text-gray-700 mt-2">@day.DayNumber</div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Enhanced Weekly Summary -->
+    <div class="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-6 text-white relative overflow-hidden">
+        <div class="absolute inset-0 opacity-10">
+            <svg class="w-full h-full" viewBox="0 0 100 100" fill="none">
+                <defs>
+                    <pattern id="summary-grid" width="15" height="15" patternUnits="userSpaceOnUse">
+                        <circle cx="7.5" cy="7.5" r="1" fill="currentColor"/>
+                    </pattern>
+                </defs>
+                <rect width="100" height="100" fill="url(#summary-grid)" />
+            </svg>
+        </div>
+
+        <div class="relative z-10">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <div class="text-white/80 text-sm font-medium">Weekly Achievement</div>
+                    <div class="text-3xl font-bold">@(CompletionPercentage.ToString("F0"))%</div>
+                </div>
+                <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                    @if (CompletionPercentage >= 100)
+                    {
+                        <span class="text-3xl">🏆</span>
+                    }
+                    else if (CompletionPercentage >= 70)
+                    {
+                        <span class="text-3xl">🌟</span>
+                    }
+                    else if (CompletionPercentage >= 40)
+                    {
+                        <span class="text-3xl">💪</span>
+                    }
+                    else
+                    {
+                        <span class="text-3xl">🎯</span>
+                    }
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <div class="w-full bg-white/20 rounded-full h-3 backdrop-blur-sm overflow-hidden">
+                    <div class="bg-gradient-to-r from-green-400 to-green-500 h-3 rounded-full transition-all duration-1000 ease-out shadow-lg"
+                         style="--completion-width: @(CompletionPercentage)%; width: var(--completion-width)"></div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between text-sm">
+                <span class="text-white/80">@GetMotivationalMessage()</span>
+                <span class="font-semibold">@CompletedDays of @TotalDays days</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<DailyProgressDto> WeeklyProgress { get; set; } = new();
+    
+    private List<WeekDayInfo> WeekDays = new();
+    private int CompletedDays => WeekDays.Count(d => d.IsCompleted);
+    private int TotalDays => WeekDays.Count(d => !d.IsFuture);
+    private double CompletionPercentage => TotalDays > 0 ? (double)CompletedDays / TotalDays * 100 : 0;
+
+    protected override void OnParametersSet()
+    {
+        GenerateWeekDays();
+    }
+
+    private void GenerateWeekDays()
+    {
+        WeekDays.Clear();
+        var today = DateTime.Today;
+        var startOfWeek = today.AddDays(-(int)today.DayOfWeek); // Start from Sunday
+        
+        for (int i = 0; i < 7; i++)
+        {
+            var date = startOfWeek.AddDays(i);
+            var progress = WeeklyProgress.FirstOrDefault(p => p.Date.Date == date.Date);
+            
+            WeekDays.Add(new WeekDayInfo
+            {
+                Date = date,
+                DayAbbr = date.ToString("ddd").Substring(0, 3),
+                DayNumber = date.Day,
+                IsToday = date.Date == today,
+                IsFuture = date.Date > today,
+                IsCompleted = progress?.GoalAchieved == true,
+                IntakeAmount = progress?.TotalIntake ?? 0,
+                GoalAmount = progress?.DailyGoal ?? 0
+            });
+        }
+    }
+
+    private string GetDayStatusClass(WeekDayInfo day)
+    {
+        if (day.IsCompleted)
+        {
+            return "bg-gradient-to-br from-green-400 to-green-500 shadow-xl border-2 border-green-300";
+        }
+        else if (day.IsToday)
+        {
+            return "bg-gradient-to-br from-blue-400 to-blue-500 shadow-xl border-2 border-blue-300 ring-4 ring-blue-200";
+        }
+        else if (day.IsFuture)
+        {
+            return "bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-200";
+        }
+        else
+        {
+            return "bg-gradient-to-br from-red-100 to-red-200 border-2 border-red-200";
+        }
+    }
+
+    private string GetMotivationalMessage()
+    {
+        if (CompletionPercentage >= 100) return "Perfect week! 🎉";
+        if (CompletionPercentage >= 85) return "Almost there! 💪";
+        if (CompletionPercentage >= 70) return "Great progress! 🌟";
+        if (CompletionPercentage >= 50) return "Keep it up! 💧";
+        if (CompletionPercentage >= 25) return "You can do it! 🎯";
+        return "Let's start strong! 💪";
+    }
+
+    private class WeekDayInfo
+    {
+        public DateTime Date { get; set; }
+        public string DayAbbr { get; set; } = "";
+        public int DayNumber { get; set; }
+        public bool IsToday { get; set; }
+        public bool IsFuture { get; set; }
+        public bool IsCompleted { get; set; }
+        public int IntakeAmount { get; set; }
+        public int GoalAmount { get; set; }
+    }
+}

@@ -1,0 +1,12 @@
+@page "/auth"
+@inject NavigationManager Navigation
+
+<PageTitle>Redirecting - Gulp</PageTitle>
+
+@code {
+    protected override void OnInitialized()
+    {
+        // Redirect to login page since we now have separate pages
+        Navigation.NavigateTo("/login", replace: true);
+    }
+}

@@ -1,0 +1,18 @@
+@inject NavigationManager Navigation
+@implements IDisposable
+
+@code {
+    protected override void OnInitialized()
+    {
+        var returnUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
+        if (returnUrl != "login" && returnUrl != "register")
+        {
+            Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", true);
+        }
+    }
+
+    public void Dispose()
+    {
+        // Nothing to dispose
+    }
+}

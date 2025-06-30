@@ -1,0 +1,320 @@
+@using Gulp.Shared.DTOs
+@using Gulp.Client.Components.UI
+
+<div class="bg-gradient-to-r from-blue-50 to-blue-100 rounded-2xl p-4 border border-blue-200 hover:shadow-lg transition-all duration-300 group">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <!-- Water Drop Icon -->
+            <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center text-white text-lg shadow-lg group-hover:scale-110 transition-transform duration-300">
+                💧
+            </div>
+
+            <!-- Intake Details -->
+            <div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-xl font-bold text-blue-900">@WaterIntake.AmountMl ml</span>
+                    <span class="text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded-full">
+                        @WaterIntake.ConsumedAt.ToString("h:mm tt")
+                    </span>
+                </div>
+                @if (!string.IsNullOrEmpty(WaterIntake.Notes))
+                {
+                    <p class="text-sm text-blue-600 italic mt-1">
+                        "@WaterIntake.Notes"
+                    </p>
+                }
+            </div>
+        </div>
+
+        <!-- Action Menu Component -->
+        <ActionMenu ItemId="@WaterIntake.Id"
+                   OnEdit="HandleEdit"
+                   OnDelete="HandleDelete" />
+    </div>
+</div>
+
+@if (showDeleteConfirm)
+{
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 transform transition-all duration-300">
+            <div class="text-center">
+                <div class="w-16 h-16 bg-red-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                </div>
+
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Delete Water Intake?</h3>
+                <p class="text-gray-600 mb-8">This will permanently remove @WaterIntake.AmountMl ml from your records. This action cannot be undone.</p>
+
+                <div class="flex space-x-4">
+                    <button @onclick="CancelDelete"
+                            disabled="@isDeleting"
+                            class="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-semibold transition-colors duration-200 disabled:opacity-50">
+                        Cancel
+                    </button>
+                    <button @onclick="ConfirmDelete"
+                            disabled="@isDeleting"
+                            class="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-semibold transition-colors duration-200 disabled:opacity-50 flex items-center justify-center">
+                        @if (isDeleting)
+                        {
+                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Deleting...</span>
+                        }
+                        else
+                        {
+                            <span>Delete</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public WaterIntakeDto WaterIntake { get; set; } = null!;
+    [Parameter] public EventCallback<WaterIntakeDto> OnEdit { get; set; }
+    [Parameter] public EventCallback<WaterIntakeDto> OnDelete { get; set; }
+
+    private bool showDeleteConfirm = false;
+    private bool isDeleting = false;
+
+    private async Task HandleEdit()
+    {
+        await OnEdit.InvokeAsync(WaterIntake);
+    }
+
+    private void HandleDelete()
+    {
+        showDeleteConfirm = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirm = false;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        try
+        {
+            isDeleting = true;
+            await OnDelete.InvokeAsync(WaterIntake);
+            showDeleteConfirm = false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting water intake: {ex.Message}");
+        }
+        finally
+        {
+            isDeleting = false;
+        }
+    }
+}
+
+<style>
+    .water-intake-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        transition: all 0.2s;
+        position: relative;
+    }
+
+    .water-intake-item:hover {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        border-color: #d1d5db;
+    }
+
+    .intake-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex: 1;
+    }
+
+    .amount-section {
+        display: flex;
+        align-items: baseline;
+        gap: 0.25rem;
+    }
+
+    .amount {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #3b82f6;
+    }
+
+    .unit {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+
+    .details-section {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .time {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #374151;
+    }
+
+    .notes {
+        font-size: 0.75rem;
+        color: #6b7280;
+        font-style: italic;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn {
+        padding: 0.375rem 0.75rem;
+        border: 1px solid;
+        border-radius: 0.375rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: transparent;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+
+    .btn-outline-secondary {
+        color: #6b7280;
+        border-color: #d1d5db;
+    }
+
+    .btn-outline-secondary:hover:not(:disabled) {
+        background-color: #6b7280;
+        color: white;
+    }
+
+    .btn-outline-danger {
+        color: #dc2626;
+        border-color: #fca5a5;
+    }
+
+    .btn-outline-danger:hover:not(:disabled) {
+        background-color: #dc2626;
+        color: white;
+    }
+
+    .btn-danger {
+        background-color: #dc2626;
+        color: white;
+        border-color: #dc2626;
+    }
+
+    .btn-secondary {
+        background-color: #6b7280;
+        color: white;
+        border-color: #6b7280;
+    }
+
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .delete-confirm {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+    }
+
+    .confirm-content {
+        text-align: center;
+        padding: 1rem;
+    }
+
+    .confirm-content p {
+        margin-bottom: 1rem;
+        color: #374151;
+        font-size: 0.875rem;
+    }
+
+    .confirm-actions {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+    }
+
+    .spinner-border {
+        width: 0.75rem;
+        height: 0.75rem;
+        border: 0.125rem solid currentColor;
+        border-right-color: transparent;
+        border-radius: 50%;
+        animation: spinner-border 0.75s linear infinite;
+    }
+
+    .spinner-border-sm {
+        width: 0.625rem;
+        height: 0.625rem;
+        border-width: 0.1rem;
+    }
+
+    .me-1 {
+        margin-right: 0.25rem;
+    }
+
+    @@keyframes spinner-border {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    @@media (max-width: 640px) {
+        .water-intake-item {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1rem;
+        }
+
+        .intake-info {
+            justify-content: space-between;
+        }
+
+        .actions {
+            justify-content: center;
+        }
+
+        .notes {
+            max-width: none;
+        }
+    }
+</style>
