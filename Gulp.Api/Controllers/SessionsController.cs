@@ -128,30 +128,32 @@ public class SessionsController : ControllerBase
         try
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (int.TryParse(userIdClaim, out var userId))
+            if (!int.TryParse(userIdClaim, out var userId))
             {
-                var user = await _userManager.FindByIdAsync(userId.ToString());
-                if (user != null)
-                {
-                    var response = new AuthResponseDto
-                    {
-                        Success = true,
-                        Message = "Session active",
-                        User = new UserDto
-                        {
-                            Id = user.Id,
-                            Email = user.Email!,
-                            FirstName = user.FirstName,
-                            LastName = user.LastName,
-                            FullName = $"{user.FirstName} {user.LastName}".Trim()
-                        }
-                    };
-
-                    return Ok(response);
-                }
+                return Unauthorized(new { message = "Invalid session" });
             }
 
-            return Unauthorized(new { message = "Invalid session" });
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user == null)
+            {
+                return Unauthorized(new { message = "Invalid session" });
+            }
+
+            var response = new AuthResponseDto
+            {
+                Success = true,
+                Message = "Session active",
+                User = new UserDto
+                {
+                    Id = user.Id,
+                    Email = user.Email!,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    FullName = $"{user.FirstName} {user.LastName}".Trim()
+                }
+            };
+
+            return Ok(response);
         }
         catch (Exception ex)
         {

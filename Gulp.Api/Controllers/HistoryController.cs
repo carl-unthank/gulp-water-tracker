@@ -9,10 +9,8 @@ namespace Gulp.Api.Controllers;
 /// <summary>
 /// Water intake history and analytics
 /// </summary>
-[ApiController]
 [Route("api/history")]
-[Authorize]
-public class HistoryController : ControllerBase
+public class HistoryController : BaseApiController
 {
     private readonly IWaterIntakeService _waterIntakeService;
     private readonly ILogger<HistoryController> _logger;
@@ -36,11 +34,7 @@ public class HistoryController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 30)
     {
-        var userId = GetCurrentUserId();
-        if (userId == null)
-        {
-            return Unauthorized();
-        }
+        var userId = GetRequiredUserId();
 
         // Default to last 30 days if no dates provided
         var start = startDate?.Date ?? DateTime.Today.AddDays(-30);
@@ -50,10 +44,10 @@ public class HistoryController : ControllerBase
         if (pageSize < 1 || pageSize > 100) pageSize = 30;
 
         var result = await _waterIntakeService.GetWaterIntakeHistoryAsync(
-            userId.Value, 
-            DateOnly.FromDateTime(start), 
-            DateOnly.FromDateTime(end), 
-            page, 
+            userId,
+            DateOnly.FromDateTime(start),
+            DateOnly.FromDateTime(end),
+            page,
             pageSize);
         
         return result.Match(
@@ -62,11 +56,10 @@ public class HistoryController : ControllerBase
             {
                 if (exception != null)
                 {
-                    _logger.LogError(exception, "Error getting water intake history for user {UserId}", userId);
-                    return StatusCode(500, new { message = "An internal server error occurred" });
+                    return HandleInternalError(_logger, exception, "Error getting water intake history", userId);
                 }
 
-                return BadRequest(new { message = errorMessage });
+                return HandleResultError(errorMessage, errorCode);
             }
         );
     }
@@ -80,13 +73,8 @@ public class HistoryController : ControllerBase
     [HttpGet("stats")]
     public async Task<ActionResult<UserStatsDto>> GetUserStats()
     {
-        var userId = GetCurrentUserId();
-        if (userId == null)
-        {
-            return Unauthorized();
-        }
-
-        var result = await _waterIntakeService.GetUserStatsAsync(userId.Value);
+        var userId = GetRequiredUserId();
+        var result = await _waterIntakeService.GetUserStatsAsync(userId);
         
         return result.Match(
             onSuccess: stats => Ok(stats),
@@ -94,20 +82,15 @@ public class HistoryController : ControllerBase
             {
                 if (exception != null)
                 {
-                    _logger.LogError(exception, "Error getting user stats for user {UserId}", userId);
-                    return StatusCode(500, new { message = "An internal server error occurred" });
+                    return HandleInternalError(_logger, exception, "Error getting user stats", userId);
                 }
 
-                return BadRequest(new { message = errorMessage });
+                return HandleResultError(errorMessage, errorCode);
             }
         );
     }
 
-    private int? GetCurrentUserId()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return int.TryParse(userIdClaim, out var userId) ? userId : null;
-    }
+
 
     private static DateTime GetStartOfWeek(DateTime date)
     {

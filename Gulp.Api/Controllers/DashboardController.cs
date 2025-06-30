@@ -9,10 +9,8 @@ namespace Gulp.Api.Controllers;
 /// <summary>
 /// Dashboard and analytics endpoints
 /// </summary>
-[ApiController]
 [Route("api/dashboard")]
-[Authorize]
-public class DashboardController : ControllerBase
+public class DashboardController : BaseApiController
 {
     private readonly IWaterIntakeService _waterIntakeService;
     private readonly IDailyGoalService _dailyGoalService;
@@ -35,20 +33,16 @@ public class DashboardController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<DashboardDto>> GetDashboard()
     {
-        var userId = GetCurrentUserId();
-        if (userId == null)
-        {
-            return Unauthorized();
-        }
+        var userId = GetRequiredUserId();
 
         try
         {
             // Get current goal
-            var goalResult = await _dailyGoalService.GetCurrentDailyGoalAsync(userId.Value);
+            var goalResult = await _dailyGoalService.GetCurrentDailyGoalAsync(userId);
             var currentGoal = goalResult.IsSuccess ? goalResult.Value : null;
 
             // Get today's intakes
-            var intakesResult = await _waterIntakeService.GetTodaysWaterIntakeAsync(userId.Value);
+            var intakesResult = await _waterIntakeService.GetTodaysWaterIntakeAsync(userId);
             var todayIntakes = intakesResult.IsSuccess && intakesResult.Value != null ? intakesResult.Value.ToList() : new List<WaterIntakeDto>();
 
             // Calculate progress
@@ -59,19 +53,19 @@ public class DashboardController : ControllerBase
             // Get insights (simplified for now)
             var insights = new InsightsDto
             {
-                AverageDaily7Days = totalIntake, // Simplified
-                AverageDaily30Days = totalIntake, // Simplified
-                TotalWeekMl = totalIntake * 7, // Simplified
-                TotalMonthMl = totalIntake * 30, // Simplified
+                AverageDaily7Days = totalIntake,
+                AverageDaily30Days = totalIntake,
+                TotalWeekMl = totalIntake * 7, 
+                TotalMonthMl = totalIntake * 30, 
                 CompletedDaysThisWeek = totalIntake >= targetAmount ? 1 : 0,
                 CompletedDaysThisMonth = totalIntake >= targetAmount ? 1 : 0,
                 CurrentStreak = totalIntake >= targetAmount ? 1 : 0,
-                LongestStreak = 1 // Simplified
+                LongestStreak = 1 
             };
 
             var dashboard = new DashboardDto
             {
-                User = new UserDto { Id = userId.Value }, // Simplified
+                User = new UserDto { Id = userId },
                 CurrentGoal = currentGoal,
                 TodayIntakeMl = totalIntake,
                 TodayProgressPercentage = progressPercentage,
@@ -83,8 +77,7 @@ public class DashboardController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting dashboard for user {UserId}", userId);
-            return StatusCode(500, new { message = "An internal server error occurred" });
+            return HandleInternalError(_logger, ex, "Error getting dashboard", userId);
         }
     }
 
@@ -121,8 +114,7 @@ public class DashboardController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting insights for user {UserId}", userId);
-            return StatusCode(500, new { message = "An internal server error occurred" });
+            return HandleInternalError(_logger, ex, "Error getting insights", userId);
         }
     }
 
@@ -135,18 +127,14 @@ public class DashboardController : ControllerBase
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
-        var userId = GetCurrentUserId();
-        if (userId == null)
-        {
-            return Unauthorized();
-        }
+        var userId = GetRequiredUserId();
 
         // Default to last 30 days if no dates provided
         var start = startDate?.Date ?? DateTime.Today.AddDays(-30);
         var end = endDate?.Date ?? DateTime.Today;
 
         var result = await _waterIntakeService.GetWaterIntakeHistoryAsync(
-            userId.Value,
+            userId,
             DateOnly.FromDateTime(start),
             DateOnly.FromDateTime(end),
             1,
@@ -158,11 +146,10 @@ public class DashboardController : ControllerBase
             {
                 if (exception != null)
                 {
-                    _logger.LogError(exception, "Error getting history for user {UserId}", userId);
-                    return StatusCode(500, new { message = "An internal server error occurred" });
+                    return HandleInternalError(_logger, exception, "Error getting history", userId);
                 }
 
-                return BadRequest(new { message = errorMessage });
+                return HandleResultError(errorMessage, errorCode);
             }
         );
     }
@@ -176,11 +163,7 @@ public class DashboardController : ControllerBase
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null)
     {
-        var userId = GetCurrentUserId();
-        if (userId == null)
-        {
-            return Unauthorized();
-        }
+        var userId = GetRequiredUserId();
 
         // Default to last 7 days if no dates provided
         var start = startDate?.Date ?? DateTime.Today.AddDays(-6);
@@ -193,11 +176,11 @@ public class DashboardController : ControllerBase
             for (var date = start; date <= end; date = date.AddDays(1))
             {
                 // Get the goal that was effective for this specific date
-                var goalResult = await _dailyGoalService.GetDailyGoalForDateAsync(userId.Value, date);
+                var goalResult = await _dailyGoalService.GetDailyGoalForDateAsync(userId, date);
                 var dailyGoal = goalResult.IsSuccess ? goalResult.Value.TargetAmountMl : 2000;
 
                 // Get daily intakes for this date
-                var intakesResult = await _waterIntakeService.GetWaterIntakeByDateAsync(userId.Value, DateOnly.FromDateTime(date));
+                var intakesResult = await _waterIntakeService.GetWaterIntakeByDateAsync(userId, DateOnly.FromDateTime(date));
                 var dailyTotal = 0;
 
                 if (intakesResult.IsSuccess)
@@ -221,14 +204,9 @@ public class DashboardController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting daily progress for user {UserId}", userId);
-            return StatusCode(500, new { message = "An internal server error occurred" });
+            return HandleInternalError(_logger, ex, "Error getting daily progress", userId);
         }
     }
 
-    private int? GetCurrentUserId()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return int.TryParse(userIdClaim, out var userId) ? userId : null;
-    }
+
 }

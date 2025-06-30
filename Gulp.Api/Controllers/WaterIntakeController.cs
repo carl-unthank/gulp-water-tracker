@@ -13,7 +13,7 @@ namespace Gulp.Api.Controllers;
 [ApiController]
 [Route("api/intakes")]
 [Authorize]
-public class WaterIntakeController : ControllerBase
+public class WaterIntakeController : BaseApiController
 {
     private readonly IWaterIntakeService _waterIntakeService;
     private readonly ILogger<WaterIntakeController> _logger;
@@ -106,13 +106,8 @@ public class WaterIntakeController : ControllerBase
     [HttpGet("today")]
     public async Task<ActionResult<IEnumerable<WaterIntakeDto>>> GetTodaysWaterIntake()
     {
-        var userId = GetCurrentUserId();
-        if (userId == null)
-        {
-            return Unauthorized();
-        }
-
-        var result = await _waterIntakeService.GetTodaysWaterIntakeAsync(userId.Value);
+        var userId = GetRequiredUserId();
+        var result = await _waterIntakeService.GetTodaysWaterIntakeAsync(userId);
         
         return result.Match(
             onSuccess: waterIntakes => Ok(waterIntakes),
@@ -120,11 +115,10 @@ public class WaterIntakeController : ControllerBase
             {
                 if (exception != null)
                 {
-                    _logger.LogError(exception, "Error getting today's water intake for user {UserId}", userId);
-                    return StatusCode(500, new { message = "An internal server error occurred" });
+                    return HandleInternalError(_logger, exception, "Error getting today's water intake", userId);
                 }
 
-                return BadRequest(new { message = errorMessage });
+                return HandleResultError(errorMessage, errorCode);
             }
         );
     }
@@ -171,13 +165,8 @@ public class WaterIntakeController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var userId = GetCurrentUserId();
-        if (userId == null)
-        {
-            return Unauthorized();
-        }
-
-        var result = await _waterIntakeService.UpdateWaterIntakeAsync(id, userId.Value, updateDto);
+        var userId = GetRequiredUserId();
+        var result = await _waterIntakeService.UpdateWaterIntakeAsync(id, userId, updateDto);
         
         return result.Match(
             onSuccess: waterIntake => 
@@ -245,13 +234,8 @@ public class WaterIntakeController : ControllerBase
     [HttpGet("progress")]
     public async Task<ActionResult<HistoryDto>> GetDailyProgress()
     {
-        var userId = GetCurrentUserId();
-        if (userId == null)
-        {
-            return Unauthorized();
-        }
-
-        var result = await _waterIntakeService.GetDailyProgressAsync(userId.Value);
+        var userId = GetRequiredUserId();
+        var result = await _waterIntakeService.GetDailyProgressAsync(userId);
         
         return result.Match(
             onSuccess: progress => Ok(progress),
@@ -259,18 +243,13 @@ public class WaterIntakeController : ControllerBase
             {
                 if (exception != null)
                 {
-                    _logger.LogError(exception, "Error getting daily progress for user {UserId}", userId);
-                    return StatusCode(500, new { message = "An internal server error occurred" });
+                    return HandleInternalError(_logger, exception, "Error getting daily progress", userId);
                 }
 
-                return BadRequest(new { message = errorMessage });
+                return HandleResultError(errorMessage, errorCode);
             }
         );
     }
 
-    private int? GetCurrentUserId()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return int.TryParse(userIdClaim, out var userId) ? userId : null;
-    }
+
 }

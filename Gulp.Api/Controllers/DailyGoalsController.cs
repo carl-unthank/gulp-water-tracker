@@ -9,10 +9,8 @@ namespace Gulp.Api.Controllers;
 /// <summary>
 /// Daily water intake goals management
 /// </summary>
-[ApiController]
 [Route("api/goals")]
-[Authorize]
-public class DailyGoalsController : ControllerBase
+public class DailyGoalsController : BaseApiController
 {
     private readonly IDailyGoalService _dailyGoalService;
     private readonly ILogger<DailyGoalsController> _logger;
@@ -32,13 +30,8 @@ public class DailyGoalsController : ControllerBase
     [HttpGet("current")]
     public async Task<ActionResult<DailyGoalDto>> GetCurrentDailyGoal()
     {
-        var userId = GetCurrentUserId();
-        if (userId == null)
-        {
-            return Unauthorized();
-        }
-
-        var result = await _dailyGoalService.GetCurrentDailyGoalAsync(userId.Value);
+        var userId = GetRequiredUserId();
+        var result = await _dailyGoalService.GetCurrentDailyGoalAsync(userId);
         
         return result.Match(
             onSuccess: goal => Ok(goal),
@@ -46,15 +39,10 @@ public class DailyGoalsController : ControllerBase
             {
                 if (exception != null)
                 {
-                    _logger.LogError(exception, "Error getting current daily goal for user {UserId}", userId);
-                    return StatusCode(500, new { message = "An internal server error occurred" });
+                    return HandleInternalError(_logger, exception, "Error getting current daily goal", userId);
                 }
 
-                return errorCode switch
-                {
-                    "NOT_FOUND" => NotFound(new { message = errorMessage }),
-                    _ => BadRequest(new { message = errorMessage })
-                };
+                return HandleResultError(errorMessage, errorCode);
             }
         );
     }
@@ -71,11 +59,7 @@ public class DailyGoalsController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var userId = GetCurrentUserId();
-        if (userId == null)
-        {
-            return Unauthorized();
-        }
+        var userId = GetRequiredUserId();
 
         // Convert CreateDailyGoalDto to DailyGoalDto for the service
         var updateDto = new DailyGoalDto
@@ -83,7 +67,7 @@ public class DailyGoalsController : ControllerBase
             TargetAmountMl = createDto.TargetAmountMl
         };
 
-        var result = await _dailyGoalService.UpdateDailyGoalAsync(userId.Value, updateDto);
+        var result = await _dailyGoalService.UpdateDailyGoalAsync(userId, updateDto);
 
         return result.Match(
             onSuccess: goal =>
@@ -95,11 +79,10 @@ public class DailyGoalsController : ControllerBase
             {
                 if (exception != null)
                 {
-                    _logger.LogError(exception, "Error creating daily goal for user {UserId}", userId);
-                    return StatusCode(500, new { message = "An internal server error occurred" });
+                    return HandleInternalError(_logger, exception, "Error creating daily goal", userId);
                 }
 
-                return BadRequest(new { message = errorMessage });
+                return HandleResultError(errorMessage, errorCode);
             }
         );
     }
@@ -116,13 +99,8 @@ public class DailyGoalsController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var userId = GetCurrentUserId();
-        if (userId == null)
-        {
-            return Unauthorized();
-        }
-
-        var result = await _dailyGoalService.UpdateDailyGoalAsync(userId.Value, updateDto);
+        var userId = GetRequiredUserId();
+        var result = await _dailyGoalService.UpdateDailyGoalAsync(userId, updateDto);
         
         return result.Match(
             onSuccess: goal => 
@@ -134,11 +112,10 @@ public class DailyGoalsController : ControllerBase
             {
                 if (exception != null)
                 {
-                    _logger.LogError(exception, "Error updating daily goal for user {UserId}", userId);
-                    return StatusCode(500, new { message = "An internal server error occurred" });
+                    return HandleInternalError(_logger, exception, "Error updating daily goal", userId);
                 }
 
-                return BadRequest(new { message = errorMessage });
+                return HandleResultError(errorMessage, errorCode);
             }
         );
     }
@@ -152,35 +129,24 @@ public class DailyGoalsController : ControllerBase
         [FromQuery] int page = 1, 
         [FromQuery] int pageSize = 10)
     {
-        var userId = GetCurrentUserId();
-        if (userId == null)
-        {
-            return Unauthorized();
-        }
+        var userId = GetRequiredUserId();
 
         if (page < 1) page = 1;
         if (pageSize < 1 || pageSize > 100) pageSize = 10;
 
-        var result = await _dailyGoalService.GetDailyGoalHistoryAsync(userId.Value, page, pageSize);
-        
+        var result = await _dailyGoalService.GetDailyGoalHistoryAsync(userId, page, pageSize);
+
         return result.Match(
             onSuccess: goals => Ok(goals),
             onFailure: (errorMessage, errorCode, exception) =>
             {
                 if (exception != null)
                 {
-                    _logger.LogError(exception, "Error getting daily goal history for user {UserId}", userId);
-                    return StatusCode(500, new { message = "An internal server error occurred" });
+                    return HandleInternalError(_logger, exception, "Error getting daily goal history", userId);
                 }
 
-                return BadRequest(new { message = errorMessage });
+                return HandleResultError(errorMessage, errorCode);
             }
         );
-    }
-
-    private int? GetCurrentUserId()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return int.TryParse(userIdClaim, out var userId) ? userId : null;
     }
 }

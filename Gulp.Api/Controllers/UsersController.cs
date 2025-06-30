@@ -9,9 +9,8 @@ namespace Gulp.Api.Controllers;
 /// <summary>
 /// RESTful user management
 /// </summary>
-[ApiController]
 [Route("api/users")]
-public class UsersController : ControllerBase
+public class UsersController : BaseApiController
 {
     private readonly IAuthService _authService;
     private readonly ILogger<UsersController> _logger;
@@ -67,21 +66,22 @@ public class UsersController : ControllerBase
     /// GET /api/users/current
     /// </summary>
     [HttpGet("current")]
-    [Authorize]
     public async Task<ActionResult<UserDto>> GetCurrentUser()
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!int.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized();
-        }
+        var userId = GetRequiredUserId();
+        var result = await _authService.GetCurrentUserAsync(userId);
 
-        var user = await _authService.GetCurrentUserAsync(userId);
-        if (user == null)
-        {
-            return NotFound();
-        }
+        return result.Match(
+            onSuccess: user => Ok(user),
+            onFailure: (errorMessage, errorCode, exception) =>
+            {
+                if (exception != null)
+                {
+                    return HandleInternalError(_logger, exception, "Error getting current user", userId);
+                }
 
-        return Ok(user);
+                return HandleResultError(errorMessage, errorCode);
+            }
+        );
     }
 }
