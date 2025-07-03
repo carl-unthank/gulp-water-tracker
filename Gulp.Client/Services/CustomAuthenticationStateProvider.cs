@@ -39,6 +39,17 @@ public class CustomAuthenticationStateProvider : AuthenticationStateProvider, ID
                         new("LastName", user.LastName)
                     };
 
+                    // Add role claims for UI convenience (AuthorizeView)
+                    // Note: These are for UI display only - server-side validation is still required
+                    // The server always re-validates roles on actual operations via [Authorize(Roles = "Admin")]
+                    if (authResponse.Roles != null)
+                    {
+                        foreach (var role in authResponse.Roles)
+                        {
+                            claims.Add(new Claim(ClaimTypes.Role, role));
+                        }
+                    }
+
                     var identity = new ClaimsIdentity(claims, "cookie");
                     var principal = new ClaimsPrincipal(identity);
 

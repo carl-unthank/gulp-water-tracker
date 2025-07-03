@@ -9,4 +9,6 @@ public class AuthResponseDto
     public string? RefreshToken { get; set; }
     public DateTime? TokenExpiry { get; set; }
     public DateTime? RefreshTokenExpiry { get; set; }
+
+    public List<string> Roles { get; set; } = [];
 }

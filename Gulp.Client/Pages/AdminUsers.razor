@@ -1,0 +1,649 @@
+@page "/admin/users"
+@layout AdminLayout
+@using Microsoft.AspNetCore.Components.Authorization
+@using Gulp.Shared.DTOs
+@using Gulp.Client.Services
+@attribute [Authorize(Roles = "Admin")]
+@inject IApiClient ApiClient
+@inject IJSRuntime JSRuntime
+
+<PageTitle>User Management - Gulp Admin</PageTitle>
+
+<!-- Users Management -->
+<div class="px-4 sm:px-0">
+    <!-- Hero Section -->
+    <div class="bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 text-white shadow-2xl relative overflow-hidden p-8 mb-8">
+        <!-- Background Pattern -->
+        <div class="absolute inset-0 opacity-10">
+            <svg class="w-full h-full" viewBox="0 0 100 100" fill="none">
+                <defs>
+                    <pattern id="user-grid" width="15" height="15" patternUnits="userSpaceOnUse">
+                        <circle cx="7.5" cy="7.5" r="1" fill="currentColor"/>
+                    </pattern>
+                </defs>
+                <rect width="100" height="100" fill="url(#user-grid)" />
+            </svg>
+        </div>
+
+        <div class="relative z-10">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="flex items-center mb-4">
+                        <div class="w-16 h-16 bg-white/20 rounded-3xl flex items-center justify-center mr-4 backdrop-blur-sm shadow-lg">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h1 class="text-3xl font-bold mb-2 text-white">User Management</h1>
+                            <p class="text-blue-100">Manage user accounts, roles, and permissions</p>
+                        </div>
+                    </div>
+                </div>
+
+                @if (users != null)
+                {
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-white">@users.TotalCount</div>
+                        <div class="text-blue-100 text-sm">Total Users</div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Section -->
+    <div class="bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-100 rounded-3xl shadow-lg border border-blue-200 overflow-hidden mb-6">
+        <!-- Search Header -->
+        <div class="bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 text-white p-4 relative overflow-hidden">
+            <div class="absolute inset-0 opacity-10">
+                <svg class="w-full h-full" viewBox="0 0 100 100" fill="none">
+                    <defs>
+                        <pattern id="search-grid" width="15" height="15" patternUnits="userSpaceOnUse">
+                            <circle cx="7.5" cy="7.5" r="1" fill="currentColor"/>
+                        </pattern>
+                    </defs>
+                    <rect width="100" height="100" fill="url(#search-grid)" />
+                </svg>
+            </div>
+            <div class="relative z-10 flex items-center space-x-3">
+                <div class="w-8 h-8 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                    <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-white">Search Users</h3>
+            </div>
+        </div>
+
+        <!-- Search Content -->
+        <div class="p-6">
+            <div class="flex items-center space-x-4">
+                <div class="flex-1 relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                    <input type="text" @bind="searchTerm" @oninput="OnSearchInput"
+                           placeholder="Search users by name or email..."
+                           class="block w-full pl-10 pr-3 py-3 border border-blue-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 text-gray-900 placeholder-gray-500 bg-white/80 backdrop-blur-sm">
+                </div>
+
+                @if (!string.IsNullOrEmpty(searchTerm))
+                {
+                    <button @onclick="ClearSearch" class="px-4 py-3 text-blue-600 hover:text-purple-600 transition-colors duration-200 bg-white/50 rounded-xl hover:bg-white/80">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(searchTerm))
+            {
+                <div class="mt-3 text-sm text-blue-700 bg-white/50 rounded-lg p-2">
+                    Searching for "<span class="font-medium text-purple-700">@searchTerm</span>"
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-100 rounded-3xl shadow-lg border border-blue-200">
+            <LoadingIndicator Size="large" Message="Loading users..." ContainerClass="py-12" />
+        </div>
+    }
+    else if (users?.Items?.Any() == true)
+    {
+        <!-- Users Table -->
+        <div class="bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-100 rounded-3xl shadow-lg border border-blue-200 overflow-hidden">
+            <!-- Table Header -->
+            <div class="bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 text-white p-4 relative overflow-hidden">
+                <div class="absolute inset-0 opacity-10">
+                    <svg class="w-full h-full" viewBox="0 0 100 100" fill="none">
+                        <defs>
+                            <pattern id="table-grid" width="15" height="15" patternUnits="userSpaceOnUse">
+                                <circle cx="7.5" cy="7.5" r="1" fill="currentColor"/>
+                            </pattern>
+                        </defs>
+                        <rect width="100" height="100" fill="url(#table-grid)" />
+                    </svg>
+                </div>
+                <div class="relative z-10 flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                        <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-white">Users Directory</h3>
+                    @if (users != null)
+                    {
+                        <span class="text-blue-100">(@users.TotalCount total)</span>
+                    }
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead class="bg-gradient-to-r from-blue-100 via-cyan-100 to-purple-100 border-b border-blue-200">
+                        <tr>
+                            <th scope="col" class="py-4 pl-6 pr-3 text-left text-sm font-semibold text-blue-900">User</th>
+                            <th scope="col" class="px-3 py-4 text-left text-sm font-semibold text-blue-900">Email</th>
+                            <th scope="col" class="px-3 py-4 text-left text-sm font-semibold text-blue-900">Roles</th>
+                            <th scope="col" class="px-3 py-4 text-left text-sm font-semibold text-blue-900">Status</th>
+                            <th scope="col" class="px-3 py-4 text-left text-sm font-semibold text-blue-900">Created</th>
+                            <th scope="col" class="px-3 py-4 text-left text-sm font-semibold text-blue-900">Last Login</th>
+                            <th scope="col" class="relative py-4 pl-3 pr-6">
+                                <span class="sr-only">Actions</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white/80 backdrop-blur-sm">
+                        @foreach (var user in users.Items)
+                        {
+                            <tr class="@(user.IsDeleted ? "bg-red-50/70" : "hover:bg-white/90") transition-colors duration-200 border-b border-blue-100/50 last:border-b-0">
+                                <td class="py-4 pl-6 pr-3">
+                                    <div class="flex items-center">
+                                        <div class="h-12 w-12 flex-shrink-0">
+                                            <div class="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-lg">
+                                                <span class="text-sm font-bold text-white">@GetUserInitials(user.FirstName, user.LastName)</span>
+                                            </div>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="font-semibold text-gray-900 text-base">@user.FirstName @user.LastName</div>
+                                            <div class="text-gray-500 text-sm">ID: @user.Id</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-3 py-4 text-sm">
+                                    <div class="text-gray-900 font-medium">@user.Email</div>
+                                    <div class="text-gray-500 text-xs">@(user.EmailConfirmed ? "✓ Verified" : "⚠ Unverified")</div>
+                                </td>
+                                <td class="px-3 py-4 text-sm">
+                                    @if (user.Roles?.Any() == true)
+                                    {
+                                        <div class="flex flex-wrap gap-1">
+                                            @foreach (var role in user.Roles)
+                                            {
+                                                <span class="inline-flex items-center rounded-full bg-gradient-to-r from-blue-100 to-purple-100 px-3 py-1 text-xs font-semibold text-blue-800 border border-blue-200">@role</span>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-gray-400 italic">No roles</span>
+                                    }
+                                </td>
+                                <td class="px-3 py-4 text-sm">
+                                    @if (user.IsDeleted)
+                                    {
+                                        <span class="inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-800 border border-red-200">
+                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                                            </svg>
+                                            Deleted
+                                        </span>
+                                    }
+                                    else if (user.LockoutEnd.HasValue && user.LockoutEnd > DateTimeOffset.UtcNow)
+                                    {
+                                        <span class="inline-flex items-center rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-800 border border-yellow-200">
+                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
+                                            </svg>
+                                            Locked
+                                        </span>
+                                        <div class="text-xs text-gray-500 mt-1">Until @user.LockoutEnd.Value.ToString("MMM dd, yyyy")</div>
+                                    }
+                                    else
+                                    {
+                                        <span class="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800 border border-green-200">
+                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                            </svg>
+                                            Active
+                                        </span>
+                                    }
+                                </td>
+                                        <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                            <div class="text-gray-900">@user.CreatedAt.ToString("MMM dd, yyyy")</div>
+                                            <div class="text-gray-500">@user.CreatedAt.ToString("HH:mm")</div>
+                                        </td>
+                                        <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                            @if (user.LastLoginAt.HasValue)
+                                            {
+                                                <div class="text-gray-900">@user.LastLoginAt.Value.ToString("MMM dd, yyyy")</div>
+                                                <div class="text-gray-500">@user.LastLoginAt.Value.ToString("HH:mm")</div>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-gray-400">Never</span>
+                                            }
+                                        </td>
+                                        <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                                            <div class="flex justify-end space-x-2">
+                                                <button @onclick="() => EditUser(user.Id)" class="text-blue-600 hover:text-blue-900">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                                    </svg>
+                                                </button>
+                                                @if (!user.IsDeleted)
+                                                {
+                                                    <button @onclick="() => DeleteUser(user.Id)" class="text-red-600 hover:text-red-900">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                        </svg>
+                                                    </button>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        @if (users.TotalPages > 1)
+        {
+            <div class="mt-6 flex items-center justify-between">
+                <div class="flex flex-1 justify-between sm:hidden">
+                    <button @onclick="PreviousPage" disabled="@(currentPage <= 1)" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                        Previous
+                    </button>
+                    <button @onclick="NextPage" disabled="@(currentPage >= users.TotalPages)" class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                        Next
+                    </button>
+                </div>
+                <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing <span class="font-medium">@((currentPage - 1) * pageSize + 1)</span> to <span class="font-medium">@Math.Min(currentPage * pageSize, users.TotalCount)</span> of <span class="font-medium">@users.TotalCount</span> results
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                            <button @onclick="PreviousPage" disabled="@(currentPage <= 1)" class="relative inline-flex items-center rounded-l-md px-2 py-2 text-blue-600 ring-1 ring-inset ring-blue-200 hover:bg-blue-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50">
+                                <span class="sr-only">Previous</span>
+                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                            
+                            @for (int i = Math.Max(1, currentPage - 2); i <= Math.Min(users.TotalPages, currentPage + 2); i++)
+                            {
+                                var pageNumber = i;
+                                <button @onclick="() => GoToPage(pageNumber)" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold @(pageNumber == currentPage ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600" : "text-gray-900 ring-1 ring-inset ring-blue-200 hover:bg-blue-50 focus:z-20 focus:outline-offset-0")">
+                                    @pageNumber
+                                </button>
+                            }
+                            
+                            <button @onclick="NextPage" disabled="@(currentPage >= users.TotalPages)" class="relative inline-flex items-center rounded-r-md px-2 py-2 text-blue-600 ring-1 ring-inset ring-blue-200 hover:bg-blue-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50">
+                                <span class="sr-only">Next</span>
+                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-100 rounded-3xl shadow-lg border border-blue-200 p-12 text-center">
+            <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">No users found</h3>
+            <p class="mt-1 text-sm text-gray-500">@(string.IsNullOrEmpty(searchTerm) ? "No users are registered in the system." : $"No users match the search term '{searchTerm}'.")</p>
+        </div>
+    }
+</div>
+
+<!-- Edit User Modal -->
+@if (showEditModal && editingUser != null)
+{
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4" @onclick="CloseEditModal">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden transform transition-all duration-300" @onclick:stopPropagation="true">
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-br from-water-blue-500 via-water-blue-600 to-aqua-600 text-white p-8 text-center relative overflow-hidden">
+                <div class="absolute inset-0 opacity-10">
+                    <svg class="w-full h-full" viewBox="0 0 100 100" fill="none">
+                        <defs>
+                            <pattern id="edit-modal-grid" width="15" height="15" patternUnits="userSpaceOnUse">
+                                <circle cx="7.5" cy="7.5" r="1" fill="currentColor"/>
+                            </pattern>
+                        </defs>
+                        <rect width="100" height="100" fill="url(#edit-modal-grid)" />
+                    </svg>
+                </div>
+
+                <div class="relative z-10">
+                    <div class="w-16 h-16 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm shadow-lg">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                    </div>
+                    <h2 class="text-2xl font-bold mb-2">Edit User</h2>
+                    <p class="text-water-blue-100 text-sm">Update user information and permissions</p>
+                </div>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-8 space-y-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">First Name</label>
+                    <input @bind="editingUser.FirstName" type="text" class="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-water-blue-500 focus:border-water-blue-500 transition-all duration-200" />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Last Name</label>
+                    <input @bind="editingUser.LastName" type="text" class="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-water-blue-500 focus:border-water-blue-500 transition-all duration-200" />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                    <input @bind="editingUser.Email" type="email" class="w-full px-4 py-3 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-water-blue-500 focus:border-water-blue-500 transition-all duration-200" />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-3">Permissions</label>
+                    <div class="bg-gray-50 rounded-2xl p-4">
+                        <label class="flex items-center space-x-3 cursor-pointer">
+                            <input type="checkbox" @bind="isAdminRole" class="w-5 h-5 text-water-blue-600 border-gray-300 rounded focus:ring-water-blue-500" />
+                            <div>
+                                <div class="font-medium text-gray-900">Administrator</div>
+                                <div class="text-sm text-gray-500">Full access to admin features</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="px-8 pb-8 flex space-x-4">
+                <button @onclick="CloseEditModal" disabled="@isSubmitting" class="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-semibold transition-colors duration-200 disabled:opacity-50">
+                    Cancel
+                </button>
+                <button @onclick="SaveUser" disabled="@isSubmitting" class="flex-1 px-6 py-3 bg-gradient-to-r from-water-blue-600 to-aqua-600 hover:from-water-blue-700 hover:to-aqua-700 text-white rounded-2xl font-semibold transition-all duration-200 disabled:opacity-50 flex items-center justify-center">
+                    @if (isSubmitting)
+                    {
+                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    }
+                    Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Delete User Modal -->
+@if (showDeleteModal && deletingUser != null)
+{
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 transform transition-all duration-300">
+            <div class="text-center">
+                <div class="w-16 h-16 bg-red-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                </div>
+
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Delete User</h3>
+                <p class="text-gray-600 mb-8">Are you sure you want to delete <strong>@deletingUser.FirstName @deletingUser.LastName</strong>? This action cannot be undone.</p>
+
+                <div class="flex space-x-4">
+                    <button @onclick="CancelDelete" disabled="@isDeleting" class="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-semibold transition-colors duration-200 disabled:opacity-50">
+                        Cancel
+                    </button>
+                    <button @onclick="ConfirmDelete" disabled="@isDeleting" class="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-semibold transition-colors duration-200 disabled:opacity-50 flex items-center justify-center">
+                        @if (isDeleting)
+                        {
+                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        }
+                        Delete User
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private PagedResult<AdminUserDto>? users;
+    private bool isLoading = true;
+    private string searchTerm = "";
+    private int currentPage = 1;
+    private readonly int pageSize = 20;
+
+    // Edit modal state
+    private bool showEditModal = false;
+    private AdminUpdateUserDto? editingUser = null;
+    private int editingUserId = 0;
+    private bool isAdminRole = false;
+    private bool isSubmitting = false;
+
+    // Delete modal state
+    private bool showDeleteModal = false;
+    private AdminUserDto? deletingUser = null;
+    private bool isDeleting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            users = await ApiClient.GetAdminUsersAsync(currentPage, pageSize, searchTerm);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading users: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? "";
+        currentPage = 1; // Reset to first page when searching
+        await LoadUsers();
+    }
+
+    private async Task ClearSearch()
+    {
+        searchTerm = "";
+        currentPage = 1;
+        await LoadUsers();
+    }
+
+    private async Task PreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            await LoadUsers();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (users != null && currentPage < users.TotalPages)
+        {
+            currentPage++;
+            await LoadUsers();
+        }
+    }
+
+    private async Task GoToPage(int page)
+    {
+        if (page != currentPage && page >= 1 && users != null && page <= users.TotalPages)
+        {
+            currentPage = page;
+            await LoadUsers();
+        }
+    }
+
+    private string GetUserInitials(string firstName, string lastName)
+    {
+        var first = !string.IsNullOrEmpty(firstName) ? firstName[0].ToString() : "";
+        var last = !string.IsNullOrEmpty(lastName) ? lastName[0].ToString() : "";
+        return (first + last).ToUpper();
+    }
+
+    private void EditUser(int userId)
+    {
+        var user = users?.Items?.FirstOrDefault(u => u.Id == userId);
+        if (user != null)
+        {
+            editingUserId = userId;
+            editingUser = new AdminUpdateUserDto
+            {
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Email = user.Email,
+                EmailConfirmed = user.EmailConfirmed,
+                Roles = user.Roles?.ToList() ?? new List<string>()
+            };
+            isAdminRole = editingUser.Roles.Contains("Admin");
+            showEditModal = true;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseEditModal()
+    {
+        showEditModal = false;
+        editingUser = null;
+        editingUserId = 0;
+        isAdminRole = false;
+        StateHasChanged();
+    }
+
+    private async Task SaveUser()
+    {
+        if (editingUser == null || isSubmitting) return;
+
+        try
+        {
+            isSubmitting = true;
+            StateHasChanged();
+
+            // Update roles based on checkbox
+            var roles = new List<string>();
+            if (isAdminRole) roles.Add("Admin");
+            editingUser.Roles = roles;
+
+            var result = await ApiClient.UpdateUserAsync(editingUserId, editingUser);
+            if (result.IsSuccess)
+            {
+                CloseEditModal();
+                await LoadUsers(); // Refresh the list
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Error updating user: {result.ErrorMessage}");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error updating user: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void DeleteUser(int userId)
+    {
+        var user = users?.Items?.FirstOrDefault(u => u.Id == userId);
+        if (user != null)
+        {
+            deletingUser = user;
+            showDeleteModal = true;
+            StateHasChanged();
+        }
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteModal = false;
+        deletingUser = null;
+        StateHasChanged();
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (deletingUser == null || isDeleting) return;
+
+        try
+        {
+            isDeleting = true;
+            StateHasChanged();
+
+            var result = await ApiClient.DeleteUserAsync(deletingUser.Id);
+            if (result.IsSuccess)
+            {
+                showDeleteModal = false;
+                deletingUser = null;
+                await LoadUsers(); // Refresh the list
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Error deleting user: {result.ErrorMessage}");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error deleting user: {ex.Message}");
+        }
+        finally
+        {
+            isDeleting = false;
+            StateHasChanged();
+        }
+    }
+}

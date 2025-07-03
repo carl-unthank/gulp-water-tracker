@@ -61,6 +61,9 @@ public class SessionsController : ControllerBase
             {
                 _logger.LogInformation("User {Email} logged in successfully", loginDto.Email);
 
+                // Get user roles for UI convenience (AuthorizeView components)
+                var roles = await _userManager.GetRolesAsync(user);
+
                 // Create response DTO
                 var response = new AuthResponseDto
                 {
@@ -73,7 +76,8 @@ public class SessionsController : ControllerBase
                         FirstName = user.FirstName,
                         LastName = user.LastName,
                         FullName = $"{user.FirstName} {user.LastName}".Trim()
-                    }
+                    },
+                    Roles = roles.ToList()
                     // No Token needed - using cookies
                 };
 
@@ -139,6 +143,9 @@ public class SessionsController : ControllerBase
                 return Unauthorized(new { message = "Invalid session" });
             }
 
+            // Get user roles for client-side role checking
+            var roles = await _userManager.GetRolesAsync(user);
+
             var response = new AuthResponseDto
             {
                 Success = true,
@@ -150,7 +157,8 @@ public class SessionsController : ControllerBase
                     FirstName = user.FirstName,
                     LastName = user.LastName,
                     FullName = $"{user.FirstName} {user.LastName}".Trim()
-                }
+                },
+                Roles = roles.ToList() // For UI convenience - server still validates with [Authorize]
             };
 
             return Ok(response);
@@ -158,6 +166,57 @@ public class SessionsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting current session");
+            return StatusCode(500, new { message = "An error occurred" });
+        }
+    }
+
+    /// <summary>
+    /// Check if current user is admin - for routing decisions only
+    /// This is secure because it uses server-side role verification from cookie claims
+    /// </summary>
+    [HttpGet("is-admin")]
+    [Authorize]
+    public ActionResult<bool> IsAdmin()
+    {
+        try
+        {
+            // Read role directly from authenticated cookie claims - secure and efficient
+            var isAdmin = User.IsInRole("Admin");
+            return Ok(isAdmin);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking admin status");
+            return StatusCode(500, false);
+        }
+    }
+
+    /// <summary>
+    /// Get minimal user info for client-side UI updates
+    /// Only exposes non-sensitive claims needed for UI personalization
+    /// Roles are NOT exposed here - use is-admin endpoint for role checks
+    /// </summary>
+    [HttpGet("user-info")]
+    [Authorize]
+    public ActionResult<object> GetUserInfo()
+    {
+        try
+        {
+            // Only expose minimal, non-sensitive claims for UI purposes
+            var userInfo = new
+            {
+                Name = User.FindFirst(ClaimTypes.Name)?.Value ?? "User",
+                Email = User.FindFirst(ClaimTypes.Email)?.Value ?? "",
+                FirstName = User.FindFirst("FirstName")?.Value ?? "",
+                LastName = User.FindFirst("LastName")?.Value ?? ""
+                // Deliberately NOT exposing roles here - use is-admin endpoint instead
+            };
+
+            return Ok(userInfo);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting user info");
             return StatusCode(500, new { message = "An error occurred" });
         }
     }

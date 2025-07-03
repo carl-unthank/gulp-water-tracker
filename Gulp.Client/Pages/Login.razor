@@ -161,7 +161,17 @@
                         customProvider.NotifyUserAuthentication(loginModel.Email);
                     }
 
-                    Navigation.NavigateTo(returnUrl ?? "/");
+                    // Check if user is admin and redirect accordingly
+                    var isAdmin = authResponse.Roles?.Contains("Admin") == true;
+
+                    if (isAdmin)
+                    {
+                        Navigation.NavigateTo("/admin");
+                    }
+                    else
+                    {
+                        Navigation.NavigateTo(returnUrl ?? "/");
+                    }
                 }
                 else
                 {

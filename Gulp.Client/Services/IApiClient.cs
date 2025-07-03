@@ -1,4 +1,5 @@
 using Gulp.Shared.DTOs;
+using Gulp.Shared.Common;
 
 namespace Gulp.Client.Services;
 
@@ -35,4 +36,10 @@ public interface IApiClient
     Task<InsightsDto> GetInsightsAsync();
     Task<List<HistoryDto>> GetHistoryAsync(DateTime startDate, DateTime endDate, int page = 1, int pageSize = 30);
     Task<List<DailyProgressDto>> GetDailyProgressAsync(DateTime startDate, DateTime endDate);
+
+    // Admin
+    Task<AdminStatsDto?> GetAdminStatsAsync();
+    Task<PagedResult<AdminUserDto>?> GetAdminUsersAsync(int page = 1, int pageSize = 20, string? search = null);
+    Task<Result<AdminUserDto>> UpdateUserAsync(int userId, AdminUpdateUserDto user);
+    Task<Result<bool>> DeleteUserAsync(int userId);
 }

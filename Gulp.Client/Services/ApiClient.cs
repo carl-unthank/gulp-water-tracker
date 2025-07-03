@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Gulp.Shared.DTOs;
+using Gulp.Shared.Common;
 
 namespace Gulp.Client.Services;
 
@@ -218,6 +219,84 @@ public class ApiClient : IApiClient
     {
         var query = $"api/dashboard/daily-progress?startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}";
         return await _httpClient.GetFromJsonAsync<List<DailyProgressDto>>(query, _jsonOptions) ?? new List<DailyProgressDto>();
+    }
+
+    // Admin
+    public async Task<AdminStatsDto?> GetAdminStatsAsync()
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<AdminStatsDto>("api/admin/stats", _jsonOptions);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<PagedResult<AdminUserDto>?> GetAdminUsersAsync(int page = 1, int pageSize = 20, string? search = null)
+    {
+        try
+        {
+            var queryParams = new List<string>
+            {
+                $"page={page}",
+                $"pageSize={pageSize}"
+            };
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                queryParams.Add($"search={Uri.EscapeDataString(search)}");
+            }
+
+            var query = string.Join("&", queryParams);
+            return await _httpClient.GetFromJsonAsync<PagedResult<AdminUserDto>>($"api/admin/users?{query}", _jsonOptions);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<Result<AdminUserDto>> UpdateUserAsync(int userId, AdminUpdateUserDto user)
+    {
+        try
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/admin/users/{userId}", user);
+            if (response.IsSuccessStatusCode)
+            {
+                var updatedUser = await response.Content.ReadFromJsonAsync<AdminUserDto>();
+                return Result<AdminUserDto>.Success(updatedUser!);
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            return Result<AdminUserDto>.Failure($"Failed to update user: {errorContent}");
+        }
+        catch (Exception ex)
+        {
+            return Result<AdminUserDto>.Failure($"Error updating user: {ex.Message}");
+        }
+    }
+
+    public async Task<Result<bool>> DeleteUserAsync(int userId)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"api/admin/users/{userId}");
+            if (response.IsSuccessStatusCode)
+            {
+                return Result<bool>.Success(true);
+            }
+            else
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                return Result<bool>.Failure($"Failed to delete user: {response.StatusCode} - {content}");
+            }
+        }
+        catch (Exception ex)
+        {
+            return Result<bool>.Failure($"Error deleting user: {ex.Message}");
+        }
     }
 
     private async Task<AuthResponseDto> HandleAuthResponseAsync(HttpResponseMessage response)

@@ -36,6 +36,9 @@ public class DataSeedService : IDataSeedService
         {
             _logger.LogInformation("Starting test data seeding...");
 
+            // Seed admin user first
+            await SeedAdminUserAsync();
+
             // Create test users
             var testUsers = new[]
             {
@@ -110,6 +113,80 @@ public class DataSeedService : IDataSeedService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during test data seeding");
+            throw;
+        }
+    }
+
+    private async Task SeedAdminUserAsync()
+    {
+        try
+        {
+            const string adminEmail = "admin@gulp.com";
+            const string adminPassword = "Admin123!";
+
+            var existingAdmin = await _userManager.FindByEmailAsync(adminEmail);
+            if (existingAdmin == null)
+            {
+                var adminUser = new ApplicationUser
+                {
+                    UserName = adminEmail,
+                    Email = adminEmail,
+                    FirstName = "System",
+                    LastName = "Administrator",
+                    EmailConfirmed = true
+                };
+
+                var result = await _userManager.CreateAsync(adminUser, adminPassword);
+                if (result.Succeeded)
+                {
+                    await _userManager.AddToRoleAsync(adminUser, "Admin");
+
+                    // Create corresponding User record in custom User table
+                    var customUser = new User
+                    {
+                        AspNetUserId = adminUser.Id
+                    };
+                    await _userRepository.AddAsync(customUser);
+
+                    _logger.LogInformation("Created admin user: {Email} with custom User ID: {CustomUserId}", adminEmail, customUser.Id);
+                }
+                else
+                {
+                    _logger.LogError("Failed to create admin user {Email}: {Errors}",
+                        adminEmail, string.Join(", ", result.Errors.Select(e => e.Description)));
+                }
+            }
+            else
+            {
+                // Ensure existing admin has the Admin role
+                if (!await _userManager.IsInRoleAsync(existingAdmin, "Admin"))
+                {
+                    await _userManager.AddToRoleAsync(existingAdmin, "Admin");
+                    _logger.LogInformation("Added Admin role to existing user: {Email}", adminEmail);
+                }
+
+                // Ensure custom User record exists
+                var existingCustomUsers = await _userRepository.FindAsync(u => u.AspNetUserId == existingAdmin.Id);
+                var existingCustomUser = existingCustomUsers.FirstOrDefault();
+
+                if (existingCustomUser == null)
+                {
+                    var customUser = new User
+                    {
+                        AspNetUserId = existingAdmin.Id
+                    };
+                    await _userRepository.AddAsync(customUser);
+                    _logger.LogInformation("Created missing custom User record for admin: {Email} with custom User ID: {CustomUserId}", adminEmail, customUser.Id);
+                }
+                else
+                {
+                    _logger.LogInformation("Admin user {Email} already exists with custom User ID: {CustomUserId}", adminEmail, existingCustomUser.Id);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error seeding admin user");
             throw;
         }
     }

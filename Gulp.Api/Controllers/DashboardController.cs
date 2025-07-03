@@ -86,12 +86,12 @@ public class DashboardController : BaseApiController
     /// GET /api/dashboard/insights
     /// </summary>
     [HttpGet("insights")]
-    public async Task<ActionResult<InsightsDto>> GetInsights()
+    public Task<ActionResult<InsightsDto>> GetInsights()
     {
         var userId = GetCurrentUserId();
         if (userId == null)
         {
-            return Unauthorized();
+            return Task.FromResult<ActionResult<InsightsDto>>(Unauthorized());
         }
 
         try
@@ -110,11 +110,11 @@ public class DashboardController : BaseApiController
                 LongestStreak = 12
             };
 
-            return Ok(insights);
+            return Task.FromResult<ActionResult<InsightsDto>>(Ok(insights));
         }
         catch (Exception ex)
         {
-            return HandleInternalError(_logger, ex, "Error getting insights", userId);
+            return Task.FromResult<ActionResult<InsightsDto>>(HandleInternalError(_logger, ex, "Error getting insights", userId));
         }
     }
 
@@ -177,13 +177,13 @@ public class DashboardController : BaseApiController
             {
                 // Get the goal that was effective for this specific date
                 var goalResult = await _dailyGoalService.GetDailyGoalForDateAsync(userId, date);
-                var dailyGoal = goalResult.IsSuccess ? goalResult.Value.TargetAmountMl : 2000;
+                var dailyGoal = goalResult.IsSuccess && goalResult.Value != null ? goalResult.Value.TargetAmountMl : 2000;
 
                 // Get daily intakes for this date
                 var intakesResult = await _waterIntakeService.GetWaterIntakeByDateAsync(userId, DateOnly.FromDateTime(date));
                 var dailyTotal = 0;
 
-                if (intakesResult.IsSuccess)
+                if (intakesResult.IsSuccess && intakesResult.Value != null)
                 {
                     dailyTotal = intakesResult.Value.Sum(i => i.AmountMl);
                 }

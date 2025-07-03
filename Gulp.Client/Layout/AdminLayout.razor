@@ -1,0 +1,182 @@
+@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@using Gulp.Client.Services
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject HttpClient Http
+@implements IDisposable
+
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-purple-50">
+    <!-- Admin Header -->
+    <header class="bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 shadow-lg relative z-10">
+        <!-- Background Pattern -->
+        <div class="absolute inset-0 opacity-10 overflow-hidden">
+            <svg class="w-full h-full" viewBox="0 0 100 100" fill="none">
+                <defs>
+                    <pattern id="admin-header-grid" width="15" height="15" patternUnits="userSpaceOnUse">
+                        <circle cx="7.5" cy="7.5" r="1" fill="currentColor"/>
+                    </pattern>
+                </defs>
+                <rect width="100" height="100" fill="url(#admin-header-grid)" />
+            </svg>
+        </div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo and Title -->
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 flex items-center">
+                        <!-- Water Drop Logo -->
+                        <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center mr-3 backdrop-blur-sm">
+                            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2.1c-5.4 0-9.8 4.4-9.8 9.8 0 5.4 4.4 9.8 9.8 9.8s9.8-4.4 9.8-9.8c0-5.4-4.4-9.8-9.8-9.8zm0 17.6c-4.3 0-7.8-3.5-7.8-7.8s3.5-7.8 7.8-7.8 7.8 3.5 7.8 7.8-3.5 7.8-7.8 7.8z"/>
+                            </svg>
+                        </div>
+                        <h1 class="text-2xl font-bold text-white">Gulp Admin</h1>
+                    </div>
+                </div>
+
+                <!-- Navigation -->
+                <nav class="hidden md:flex space-x-8">
+                    <a href="/admin" class="@GetNavClass("/admin")" @onclick="@(() => NavigateTo("/admin"))">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        Dashboard
+                    </a>
+                    <a href="/admin/users" class="@GetNavClass("/admin/users")" @onclick="@(() => NavigateTo("/admin/users"))">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                        </svg>
+                        Users
+                    </a>
+                    <a href="/admin/analytics" class="@GetNavClass("/admin/analytics")" @onclick="@(() => NavigateTo("/admin/analytics"))">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        Analytics
+                    </a>
+                </nav>
+
+                <!-- User Menu -->
+                <div class="flex items-center space-x-4">
+                    <AuthorizeView>
+                        <Authorized>
+                            <div class="flex items-center space-x-3">
+                                <span class="text-sm text-white font-medium">@context.User.Identity?.Name</span>
+                                <div class="relative">
+                                    <button @onclick="ToggleUserMenu" class="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                                        <div class="h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                                            <span class="text-sm font-medium text-white">@GetUserInitials(context.User.Identity?.Name)</span>
+                                        </div>
+                                    </button>
+                                    @if (showUserMenu)
+                                    {
+                                        <div class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl py-2 z-[9999] border border-gray-200">
+                                            <a href="/" class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200 rounded-lg mx-2">
+                                                <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                                                </svg>
+                                                Back to App
+                                            </a>
+                                            <button @onclick="Logout" class="flex items-center w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors duration-200 rounded-lg mx-2">
+                                                <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                                </svg>
+                                                Logout
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </Authorized>
+                        <NotAuthorized>
+                            <a href="/login" class="text-white hover:text-white/80 font-medium">Login</a>
+                        </NotAuthorized>
+                    </AuthorizeView>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        @Body
+    </main>
+</div>
+
+@code {
+    private bool showUserMenu = false;
+    private string currentPath = "";
+
+    protected override void OnInitialized()
+    {
+        currentPath = Navigation.ToBaseRelativePath(Navigation.Uri);
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        currentPath = Navigation.ToBaseRelativePath(e.Location);
+        showUserMenu = false; // Close menu on navigation
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string GetNavClass(string path)
+    {
+        var isActive = currentPath == path.TrimStart('/') ||
+                      (path == "/admin" && (currentPath == "admin" || string.IsNullOrEmpty(currentPath)));
+
+        return isActive
+            ? "flex items-center px-3 py-2 text-sm font-medium text-white border-b-2 border-white bg-white/10 rounded-t-lg"
+            : "flex items-center px-3 py-2 text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 border-b-2 border-transparent transition-all duration-200 rounded-t-lg";
+    }
+
+    private void NavigateTo(string path)
+    {
+        Navigation.NavigateTo(path);
+    }
+
+    private void ToggleUserMenu()
+    {
+        showUserMenu = !showUserMenu;
+    }
+
+    private string GetUserInitials(string? name)
+    {
+        if (string.IsNullOrEmpty(name)) return "U";
+        
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+        {
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        }
+        return name[0].ToString().ToUpper();
+    }
+
+    private async Task Logout()
+    {
+        showUserMenu = false;
+
+        try
+        {
+            await Http.DeleteAsync("api/sessions/current");
+
+            // Notify the authentication state provider
+            if (AuthStateProvider is CustomAuthenticationStateProvider customProvider)
+            {
+                customProvider.NotifyUserLogout();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Logout error: {ex.Message}");
+        }
+
+        Navigation.NavigateTo("/login");
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}
